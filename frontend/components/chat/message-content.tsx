@@ -68,6 +68,26 @@ export function MessageContent({ content, isUser, data, error }: MessageContentP
               pre: ({ children }) => (
                 <pre className="my-4 overflow-x-auto rounded-lg bg-muted p-4">{children}</pre>
               ),
+              table: ({ children }) => (
+                <div className="my-6 overflow-x-auto">
+                  <table className="w-full border-collapse border border-border rounded-lg overflow-hidden">
+                    {children}
+                  </table>
+                </div>
+              ),
+              thead: ({ children }) => <thead className="bg-muted/50">{children}</thead>,
+              tbody: ({ children }) => <tbody className="divide-y divide-border">{children}</tbody>,
+              tr: ({ children }) => (
+                <tr className="hover:bg-muted/30 transition-colors">{children}</tr>
+              ),
+              th: ({ children }) => (
+                <th className="border border-border px-4 py-3 text-left font-semibold text-foreground bg-muted/30">
+                  {children}
+                </th>
+              ),
+              td: ({ children }) => (
+                <td className="border border-border px-4 py-3 text-foreground">{children}</td>
+              ),
             }}
           >
             {content}
