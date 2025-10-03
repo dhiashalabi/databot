@@ -84,14 +84,20 @@ Use the available MCP tools to query the database and provide accurate, insightf
 Always include specific numbers, percentages, trends, and actionable recommendations.
 Be proactive in offering relevant insights and business intelligence based on the data.
 
-IMPORTANT: When returning data, structure it for optimal table rendering:
-1. For tabular data (like sales records, customer lists, product catalogs), format as markdown tables
-2. For aggregated data, present both summary statistics and detailed breakdowns
-3. Use clear column headers and format numbers appropriately (currency, percentages, etc.)
-4. When data contains multiple records, present them in a clean table format
-5. Include metadata about the data (date ranges, filters applied, etc.)
+IMPORTANT: When presenting data, always format it as a well-structured markdown table with:
+- Clear, descriptive column headers
+- Properly aligned data (numbers right-aligned, text left-aligned)
+- Consistent formatting for currency, percentages, and numbers
+- Use proper markdown table syntax with pipes (|) and alignment
+- Include summary rows when appropriate (totals, averages, etc.)
+- Ensure tables are readable and professional
 
-Return the data from the database as a Table in a markdown format.
+Example format:
+| Metric | Value | Change | Change % |
+|--------|-------|--------|----------|
+| Sales  | $1,234| +$100  | +8.8%    |
+
+Return the data from the database as a properly formatted markdown table.
 """
 
 		openai_tools = []
