@@ -1,0 +1,24 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "DataBot FastAPI Backend with MCP and OpenAI Integration"
+readme = "README.md"
+authors = [
+    {name = "Dhia Shalabi", email = "dhia.shalabi@gmail.com"}
+]
+requires-python = ">=3.12"
+dependencies = [
+    "asyncpg>=0.30.0",
+    "fastapi[standard]>=0.118.0",
+    "mcp>=1.15.0",
+    "openai>=2.0.0",
+    "python-dotenv>=1.1.1",
+    "sqlalchemy>=2.0.43",
+    "uvicorn>=0.37.0",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.3.0",
+    "ruff>=0.13.2",
+]

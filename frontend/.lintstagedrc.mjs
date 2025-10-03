@@ -1,0 +1,15 @@
+export default {
+  "app/**/*.{ts,tsx,js,jsx}": ["pnpm run lint:fix", "pnpm run format"],
+  "app/**/*.{ts,tsx}": ["pnpm run type-check"],
+  "components/**/*.{ts,tsx,js,jsx}": ["pnpm run lint:fix", "pnpm run format"],
+  "components/**/*.{ts,tsx}": ["pnpm run type-check"],
+  "lib/**/*.{ts,tsx,js,jsx}": ["pnpm run lint:fix", "pnpm run format"],
+  "lib/**/*.{ts,tsx}": ["pnpm run type-check"],
+  "*.{ts,tsx,js,jsx}": ["pnpm run lint:fix", "pnpm run format"],
+  "*.{ts,tsx}": ["pnpm run type-check"],
+  "*.config.{ts,js,mjs}": ["pnpm run lint:fix", "pnpm run format"],
+  "*.json": ["npx prettier --write"],
+  "*.md": ["npx prettier --write"],
+  "*.{yml,yaml}": ["npx prettier --write"],
+  "*.css": ["npx prettier --write"],
+}

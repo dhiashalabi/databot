@@ -1,0 +1,11 @@
+{
+	"servers": {
+		"DataBot": {
+			"type": "stdio",
+			"command": "uv",
+			"args": ["run", "python", "-m", "src.mcp.mcp_server"],
+			"cwd": "/home/dhiashalabi/development/personal/databot/backend"
+		}
+	},
+	"inputs": []
+}
