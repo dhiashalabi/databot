@@ -91,9 +91,9 @@ cp .env.example .env
 # Edit .env with your database and OpenAI credentials
 
 # Start the backend server
-uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
-# OR
 fastapi dev main.py
+# OR
+uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 The API will be available at `http://localhost:8000` with interactive docs at `http://localhost:8000/docs`.
@@ -225,14 +225,6 @@ The backend provides comprehensive API documentation:
 - **Interactive Docs**: `http://localhost:8000/docs`
 - **ReDoc**: `http://localhost:8000/redoc`
 - **OpenAPI Schema**: `http://localhost:8000/openapi.json`
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
 
 ## License
 
