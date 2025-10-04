@@ -16,3 +16,4 @@ class ChatResponse(BaseModel):
 	answer: str
 	data: list[dict] | dict | None = None
 	query: str
+	files: list[dict] | None = None
