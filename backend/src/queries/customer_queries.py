@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from sqlalchemy import desc, func, select
+from sqlalchemy import desc, func, or_, select
 
 from src.models.customer import Customer
 from src.models.sales import Sale
@@ -108,15 +108,65 @@ class CustomerQueryBuilder(BaseQueryBuilder):
 
 	@staticmethod
 	def build_customer_search_query(search_term: str, limit: int = 20):
-		"""Build query for customer search."""
+		"""Build query for customer search with enhanced ILIKE patterns."""
+
+		words = search_term.split()
+		search_patterns = []
+
+		search_patterns.extend(
+			[
+				Customer.customer_name.ilike(f"%{search_term}%"),
+				Customer.email.ilike(f"%{search_term}%"),
+				Customer.company.ilike(f"%{search_term}%"),
+			]
+		)
+
+		for word in words:
+			if len(word) > 2:
+				search_patterns.extend(
+					[
+						Customer.customer_name.ilike(f"%{word}%"),
+						Customer.email.ilike(f"%{word}%"),
+						Customer.company.ilike(f"%{word}%"),
+					]
+				)
+
 		return (
 			select(Customer)
-			.where(
-				Customer.customer_name.ilike(f"%{search_term}%")
-				| Customer.email.ilike(f"%{search_term}%")
-				| Customer.company.ilike(f"%{search_term}%")
-			)
+			.where(or_(*search_patterns))
 			.order_by(Customer.customer_name)
+			.limit(limit)
+		)
+
+	@staticmethod
+	def build_customer_details_query(customer_name: str):
+		"""Build query for customer details with enhanced ILIKE patterns."""
+
+		words = customer_name.split()
+		like_patterns = [Customer.customer_name.ilike(f"%{customer_name}%")]
+
+		for word in words:
+			if len(word) > 2:
+				like_patterns.append(Customer.customer_name.ilike(f"%{word}%"))
+
+		return select(Customer).where(or_(*like_patterns))
+
+	@staticmethod
+	def build_fuzzy_search_candidates_query(search_term: str, limit: int = 50):
+		"""Build query for fuzzy search candidates with ILIKE pre-filtering."""
+		from sqlalchemy import or_
+
+		words = search_term.split()
+		like_patterns = []
+
+		for word in words:
+			like_patterns.append(Customer.customer_name.ilike(f"%{word}%"))
+
+		like_patterns.append(Customer.customer_name.ilike(f"%{search_term}%"))
+
+		return (
+			select(Customer.customer_name, Customer.id)
+			.where(or_(*like_patterns))
 			.limit(limit)
 		)
 
