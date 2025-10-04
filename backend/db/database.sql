@@ -4,6 +4,18 @@ DROP TABLE IF EXISTS sale CASCADE;
 DROP TABLE IF EXISTS product CASCADE;
 DROP TABLE IF EXISTS category CASCADE;
 DROP TABLE IF EXISTS customer CASCADE;
+DROP TABLE IF EXISTS "user" CASCADE;
+
+CREATE TABLE "user" (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    hashed_password TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT TRUE,
+    is_admin BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
 
 CREATE TABLE customer (
     id SERIAL PRIMARY KEY,
@@ -89,6 +101,8 @@ CREATE TABLE sale (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE INDEX idx_user_email ON "user"(email);
+CREATE INDEX idx_user_username ON "user"(username);
 CREATE INDEX idx_customer_email ON customer(email);
 CREATE INDEX idx_customer_name ON customer(customer_name);
 CREATE INDEX idx_product_sku ON product(sku);
