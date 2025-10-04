@@ -3,6 +3,7 @@
 import Image from "next/image"
 import React from "react"
 import ReactMarkdown from "react-markdown"
+import rehypeRaw from "rehype-raw"
 import remarkGfm from "remark-gfm"
 
 import { ErrorDisplay, ValidationErrorDisplay } from "./error-display"
@@ -10,6 +11,16 @@ import { ErrorDisplay, ValidationErrorDisplay } from "./error-display"
 import { enhanceError } from "@/lib/error-utils"
 import { cn } from "@/lib/utils"
 import type { EnhancedError } from "@/types"
+
+function processImageUrl(src: string): string {
+  let imageUrl = src.replace(/^sandbox:/, "")
+  if (imageUrl.startsWith("http")) {
+    imageUrl = imageUrl.replace(/^https?:\/\/[^/]+/, "http://localhost:8000")
+  } else {
+    imageUrl = `http://localhost:8000${imageUrl}`
+  }
+  return imageUrl
+}
 
 interface MessageContentProps {
   content: string
@@ -23,24 +34,19 @@ function SimpleChartImage({ src, alt }: { src: string; alt?: string }) {
     return null
   }
 
-  let imageUrl = src.replace(/^sandbox:/, "")
-  if (!imageUrl.startsWith("http")) {
-    imageUrl = `http://localhost:8000${imageUrl}`
-  }
+  const imageUrl = processImageUrl(src)
 
   return (
-    <div className="my-4 flex justify-center">
-      <Image
-        src={imageUrl}
-        alt={alt || "Chart"}
-        className="max-w-full h-auto rounded-lg border border-border shadow-sm"
-        width={1000}
-        height={1000}
-        onError={e => {
-          e.currentTarget.style.opacity = "0.5"
-        }}
-      />
-    </div>
+    <Image
+      src={imageUrl}
+      className="max-w-full h-auto rounded-md"
+      alt={alt || "Chart"}
+      width={1000}
+      height={1000}
+      onError={e => {
+        e.currentTarget.style.opacity = "0.5"
+      }}
+    />
   )
 }
 
@@ -49,10 +55,7 @@ function EnhancedChartImage({ src, alt, metadata }: { src: string; alt?: string;
     return null
   }
 
-  let imageUrl = src.replace(/^sandbox:/, "")
-  if (!imageUrl.startsWith("http")) {
-    imageUrl = `http://localhost:8000${imageUrl}`
-  }
+  const imageUrl = processImageUrl(src)
 
   return (
     <div className="my-6 flex flex-col items-center">
@@ -128,9 +131,6 @@ export function MessageContent({ content, isUser, data: _data, error }: MessageC
     )
   }
 
-  // Check if data contains HTML content
-  const hasHtmlData = _data && typeof _data === "string" && _data.includes("<")
-
   return (
     <div className={cn("flex-1 space-y-2 pt-1", isUser && "flex flex-col items-end")}>
       {isUser ? (
@@ -141,6 +141,7 @@ export function MessageContent({ content, isUser, data: _data, error }: MessageC
         <div className="prose prose-invert max-w-none text-[15px] leading-7 text-foreground">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeRaw]}
             components={{
               p: ({ children }) => <p className="mb-4 last:mb-0">{children}</p>,
               ul: ({ children }) => <ul className="mb-4 ml-4 list-disc space-y-1">{children}</ul>,
@@ -189,21 +190,12 @@ export function MessageContent({ content, isUser, data: _data, error }: MessageC
         </div>
       )}
 
-      {/* Render HTML data if present */}
-      {hasHtmlData && (
-        <div 
-          className="prose prose-invert max-w-none text-[15px] leading-7 text-foreground"
-          dangerouslySetInnerHTML={{ __html: _data as string }}
-        />
-      )}
-
-      {/* Render chart data if present */}
       {_data &&
       typeof _data === "object" &&
       _data !== null &&
       "chart_url" in _data &&
       (_data as any).chart_url &&
-      !content.includes((_data as any).chart_url) ? (
+      !content.includes("![") ? (
         <div className="pt-4">
           <EnhancedChartImage
             src={(_data as any).chart_url}
