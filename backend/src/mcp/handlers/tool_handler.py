@@ -6,7 +6,7 @@ from typing import Any
 
 from mcp.types import ListToolsResult, TextContent
 
-from ..registry import ToolRegistry
+from src.mcp.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -14,9 +14,10 @@ logger = logging.getLogger(__name__)
 class ToolHandler:
 	"""Handler for MCP tool operations."""
 
-	def __init__(self, tool_registry: ToolRegistry):
+	def __init__(self, tool_registry: ToolRegistry, data_sanitizer=None):
 		"""Initialize the tool handler."""
 		self.tool_registry = tool_registry
+		self.data_sanitizer = data_sanitizer
 
 	async def list_tools(
 		self, group: str = None, category: str = None, namespace: str = None
@@ -101,6 +102,13 @@ class ToolHandler:
 		"""Call a tool with the given arguments."""
 		try:
 			result = await self.tool_registry.execute_tool(name, arguments)
+
+			if self.data_sanitizer:
+				try:
+					result = self.data_sanitizer.sanitize_data(result)
+				except Exception as e:
+					logger.warning(f"Error sanitizing tool result for {name}: {e}")
+
 			return [
 				TextContent(type="text", text=json.dumps(result, indent=2, default=str))
 			]
