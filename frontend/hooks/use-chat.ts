@@ -3,16 +3,11 @@
 import { useCallback } from "react"
 import { v4 as uuidv4 } from "uuid"
 
-import {
-  enhanceError,
-  extractErrorFromResponse,
-  isErrorResponse,
-  shouldShowInToast,
-} from "@/lib/error-utils"
+import { enhanceError, shouldShowInToast } from "@/lib/error-utils"
 import { useChatStore } from "@/lib/stores"
-import { showErrorToast, showValidationErrorToast } from "@/lib/toast-utils"
-import { typeTextWithUpdate } from "@/lib/typing-utils"
-import type { Message, ApiResponse } from "@/types"
+import { showErrorToast } from "@/lib/toast-utils"
+import type { ChatApiResponse } from "@/types/api-types"
+import type { Message } from "@/types/chat-types"
 
 export function useChat() {
   const {
@@ -21,7 +16,6 @@ export function useChat() {
     error,
     selectedModel,
     addMessage,
-    updateMessage,
     setLoading,
     setError,
     setSelectedModel,
@@ -50,72 +44,45 @@ export function useChat() {
           body: JSON.stringify({ message: content, model: selectedModel || undefined }),
         })
 
-        const data: ApiResponse = await response.json()
+        const data: ChatApiResponse = await response.json()
 
-        if (isErrorResponse(data)) {
-          const extractedError = extractErrorFromResponse(data)
-          if (extractedError) {
-            const enhancedError = enhanceError(extractedError)
+        // Check if the response contains an error
+        if ("error" in data) {
+          const enhancedError = enhanceError(data.error.error)
 
-            if (shouldShowInToast(enhancedError)) {
-              if (
-                enhancedError.type === "validation_error" &&
-                "validation_errors" in enhancedError
-              ) {
-                showValidationErrorToast(enhancedError.userMessage)
-              } else {
-                showErrorToast(enhancedError)
-              }
-            }
-
-            const errorMessage: Message = {
-              id: assistantMessageId,
-              role: "assistant",
-              content: "",
-              timestamp: new Date(),
-              error: enhancedError,
-            }
-
-            addMessage(errorMessage)
-            setLoading(false)
-            setError(enhancedError.userMessage)
-            return
+          if (shouldShowInToast(enhancedError)) {
+            showErrorToast(enhancedError)
           }
+
+          const errorMessage: Message = {
+            id: assistantMessageId,
+            role: "assistant",
+            content: "",
+            timestamp: new Date(),
+            error: enhancedError,
+          }
+
+          addMessage(errorMessage)
+          setLoading(false)
+          setError(enhancedError.userMessage)
+          return
         }
 
         if (!response.ok) {
           throw new Error(`Server error: ${response.statusText}`)
         }
 
-        if ("answer" in data) {
-          const assistantMessage: Message = {
-            id: assistantMessageId,
-            role: "assistant",
-            content: "",
-            timestamp: new Date(),
-            isTyping: true,
-          }
-
-          addMessage(assistantMessage)
-          setLoading(false)
-
-          await typeTextWithUpdate(
-            data.answer || "No response received",
-            text => updateMessage(assistantMessageId, { content: text }),
-            {
-              wordDelay: 30,
-              randomDelay: 20,
-              onTypingStart: () => updateMessage(assistantMessageId, { isTyping: true }),
-              onTypingComplete: () => updateMessage(assistantMessageId, { isTyping: false }),
-            }
-          )
-
-          if (data.data) {
-            updateMessage(assistantMessageId, { data: data.data })
-          }
-        } else {
-          throw new Error("Invalid response format")
+        const assistantMessage: Message = {
+          id: assistantMessageId,
+          role: "assistant",
+          content: data.answer || "No response received",
+          timestamp: new Date(),
+          isTyping: false,
+          data: data.data || null,
         }
+
+        addMessage(assistantMessage)
+        setLoading(false)
       } catch (error) {
         const rawError = error instanceof Error ? error.message : "An error occurred"
         const enhancedError = enhanceError(rawError)
@@ -137,7 +104,7 @@ export function useChat() {
         setError(enhancedError.userMessage)
       }
     },
-    [addMessage, setError, setLoading, updateMessage, selectedModel]
+    [addMessage, setError, setLoading, selectedModel]
   )
 
   const clearMessagesCallback = useCallback(() => {
