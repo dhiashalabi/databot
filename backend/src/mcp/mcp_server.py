@@ -161,7 +161,7 @@ class MCPServer:
 
 			self.tool_registry = ToolRegistry(self.data_tools, self.insights_engine)
 
-			self.tool_handler = ToolHandler(self.tool_registry)
+			self.tool_handler = ToolHandler(self.tool_registry, self.data_sanitizer)
 			self.resource_handler = ResourceHandler(self.tool_registry)
 
 			self._is_healthy = True
