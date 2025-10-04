@@ -8,23 +8,16 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from src.api import api_router
 from src.config import settings
-from src.database import close_db
-from src.mcp.mcp_server import MCPServer
+from src.database import close_db, init_db
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-	"""Manage application lifecycle"""
-	global llm_service, mcp_server
-
-	mcp_server = MCPServer()
-	logger.info("MCP server initialized")
-
+	"""Application lifespan events."""
+	await init_db()
 	yield
-
-	logger.info("Shutting down services...")
 	await close_db()
 
 

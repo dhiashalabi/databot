@@ -7,7 +7,7 @@ export interface TypingOptions {
 }
 
 export async function typeText(text: string, options: TypingOptions = {}): Promise<void> {
-  const { wordDelay = 30, randomDelay = 20, onWordTyped, onTypingStart, onTypingComplete } = options
+  const { wordDelay = 2, randomDelay = 1, onWordTyped, onTypingStart, onTypingComplete } = options
 
   const words = text.split(" ")
   let currentText = ""
@@ -40,7 +40,7 @@ export async function typeTextWithUpdate(
 export async function typeTextDebounced(
   text: string,
   updateFn: (text: string) => void,
-  debounceMs: number = 100,
+  debounceMs: number = 50,
   options: TypingOptions = {}
 ): Promise<void> {
   await new Promise(resolve => setTimeout(resolve, debounceMs))

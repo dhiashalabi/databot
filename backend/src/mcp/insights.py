@@ -522,14 +522,14 @@ class AIInsightsEngine:
 			"at_risk": [],
 		}
 
-		total_spent_values = [c["total_spent"] or 0 for c in customers_data]
+		total_spent_values = [float(c["total_spent"] or 0) for c in customers_data]
 		if total_spent_values:
 			avg_spent = statistics.mean(total_spent_values)
 			high_threshold = avg_spent * 1.5
 			low_threshold = avg_spent * 0.5
 
 		for customer in customers_data:
-			total_spent = customer["total_spent"] or 0
+			total_spent = float(customer["total_spent"] or 0)
 			last_purchase = customer["last_purchase"]
 
 			if last_purchase:
@@ -832,14 +832,14 @@ class AIInsightsEngine:
 		if not customers_data:
 			return predictions
 
-		total_spent_values = [c["total_spent"] or 0 for c in customers_data]
+		total_spent_values = [float(c["total_spent"] or 0) for c in customers_data]
 		avg_spent = statistics.mean(total_spent_values) if total_spent_values else 0
 
-		total_orders = [c["total_orders"] or 0 for c in customers_data]
+		total_orders = [int(c["total_orders"] or 0) for c in customers_data]
 		avg_orders = statistics.mean(total_orders) if total_orders else 0
 
 		high_value_count = len(
-			[c for c in customers_data if (c["total_spent"] or 0) > avg_spent * 1.5]
+			[c for c in customers_data if float(c["total_spent"] or 0) > avg_spent * 1.5]
 		)
 		if high_value_count > len(customers_data) * 0.2:
 			predictions["trends"].append("Growing high-value customer base")

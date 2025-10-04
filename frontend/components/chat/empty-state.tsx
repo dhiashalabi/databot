@@ -2,6 +2,7 @@
 
 import { Bot } from "lucide-react"
 
+import { HealthStatus } from "@/components/health-status"
 import { ModelSelector } from "@/components/model-selector"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -36,6 +37,10 @@ export function EmptyState({
 }: EmptyStateProps) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4">
+      <div className="mb-6">
+        <HealthStatus />
+      </div>
+
       <h1 className="mb-12 text-center text-3xl font-medium text-foreground">
         How can I help you today?
       </h1>
