@@ -679,21 +679,21 @@ class ToolDefinitions:
 						"period": {
 							"type": "string",
 							"enum": ["day", "week", "month", "year"],
-							"default": "month"
+							"default": "month",
 						},
 						"limit": {
 							"type": "integer",
 							"minimum": 1,
 							"maximum": 100,
-							"default": 12
+							"default": 12,
 						},
 						"chart_type": {
 							"type": "string",
 							"enum": ["line", "bar"],
-							"default": "line"
-						}
-					}
-				}
+							"default": "line",
+						},
+					},
+				},
 			),
 			Tool(
 				name="create_top_products_chart",
@@ -705,20 +705,20 @@ class ToolDefinitions:
 							"type": "integer",
 							"minimum": 1,
 							"maximum": 50,
-							"default": 10
+							"default": 10,
 						},
 						"chart_type": {
 							"type": "string",
 							"enum": ["bar", "pie"],
-							"default": "bar"
+							"default": "bar",
 						},
 						"metric": {
 							"type": "string",
 							"enum": ["revenue", "quantity"],
-							"default": "revenue"
-						}
-					}
-				}
+							"default": "revenue",
+						},
+					},
+				},
 			),
 			Tool(
 				name="create_sales_by_category_chart",
@@ -726,17 +726,14 @@ class ToolDefinitions:
 				inputSchema={
 					"type": "object",
 					"properties": {
-						"start_date": {
-							"type": "string",
-							"format": "date"
-						},
+						"start_date": {"type": "string", "format": "date"},
 						"chart_type": {
 							"type": "string",
 							"enum": ["pie", "bar"],
-							"default": "pie"
-						}
-					}
-				}
+							"default": "pie",
+						},
+					},
+				},
 			),
 			Tool(
 				name="create_customer_analysis_chart",
@@ -748,15 +745,15 @@ class ToolDefinitions:
 							"type": "integer",
 							"minimum": 1,
 							"maximum": 50,
-							"default": 10
+							"default": 10,
 						},
 						"chart_type": {
 							"type": "string",
 							"enum": ["bar", "pie"],
-							"default": "bar"
-						}
-					}
-				}
+							"default": "bar",
+						},
+					},
+				},
 			),
 			Tool(
 				name="create_sales_comparison_chart",
@@ -764,30 +761,23 @@ class ToolDefinitions:
 				inputSchema={
 					"type": "object",
 					"properties": {
-						"period1_start": {
-							"type": "string",
-							"format": "date"
-						},
-						"period1_end": {
-							"type": "string",
-							"format": "date"
-						},
-						"period2_start": {
-							"type": "string",
-							"format": "date"
-						},
-						"period2_end": {
-							"type": "string",
-							"format": "date"
-						},
+						"period1_start": {"type": "string", "format": "date"},
+						"period1_end": {"type": "string", "format": "date"},
+						"period2_start": {"type": "string", "format": "date"},
+						"period2_end": {"type": "string", "format": "date"},
 						"chart_type": {
 							"type": "string",
 							"enum": ["bar"],
-							"default": "bar"
-						}
+							"default": "bar",
+						},
 					},
-					"required": ["period1_start", "period1_end", "period2_start", "period2_end"]
-				}
+					"required": [
+						"period1_start",
+						"period1_end",
+						"period2_start",
+						"period2_end",
+					],
+				},
 			),
 			Tool(
 				name="create_custom_query_chart",
@@ -795,28 +785,143 @@ class ToolDefinitions:
 				inputSchema={
 					"type": "object",
 					"properties": {
-						"sql_query": {
-							"type": "string"
-						},
+						"sql_query": {"type": "string"},
 						"chart_type": {
 							"type": "string",
 							"enum": ["bar", "line", "pie"],
-							"default": "bar"
+							"default": "bar",
 						},
-						"x_column": {
-							"type": "string"
-						},
-						"y_column": {
-							"type": "string"
-						},
-						"title": {
-							"type": "string",
-							"default": "Custom Chart"
-						}
+						"x_column": {"type": "string"},
+						"y_column": {"type": "string"},
+						"title": {"type": "string", "default": "Custom Chart"},
 					},
-					"required": ["sql_query"]
-				}
-			)
+					"required": ["sql_query"],
+				},
+			),
+		]
+
+	@staticmethod
+	def get_file_tools() -> list[Tool]:
+		"""Get file generation and export tools."""
+		return [
+			Tool(
+				name="export_sales_to_csv",
+				description="Export sales data to CSV format with optional date filtering",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"start_date": {
+							"type": "string",
+							"format": "date",
+							"description": "Start date for sales data (YYYY-MM-DD)",
+						},
+						"end_date": {
+							"type": "string",
+							"format": "date",
+							"description": "End date for sales data (YYYY-MM-DD)",
+						},
+						"include_details": {
+							"type": "boolean",
+							"default": True,
+							"description": "Include detailed customer and product information",
+						},
+					},
+				},
+			),
+			Tool(
+				name="export_customers_to_csv",
+				description="Export customer data to CSV format with sales summary",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"customer_type": {
+							"type": "string",
+							"description": "Filter by customer type (individual, corporate, etc.)",
+						},
+						"include_sales_summary": {
+							"type": "boolean",
+							"default": True,
+							"description": "Include sales summary for each customer",
+						},
+					},
+				},
+			),
+			Tool(
+				name="export_products_to_excel",
+				description="Export product data to Excel format with multiple sheets",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"category": {
+							"type": "string",
+							"description": "Filter by product category",
+						},
+						"include_sales_data": {
+							"type": "boolean",
+							"default": True,
+							"description": "Include sales performance data in separate sheet",
+						},
+					},
+				},
+			),
+			Tool(
+				name="export_sales_report_to_pdf",
+				description="Generate comprehensive sales report in PDF format",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"start_date": {
+							"type": "string",
+							"format": "date",
+							"description": "Start date for report period (YYYY-MM-DD)",
+						},
+						"end_date": {
+							"type": "string",
+							"format": "date",
+							"description": "End date for report period (YYYY-MM-DD)",
+						},
+						"report_title": {
+							"type": "string",
+							"default": "Sales Report",
+							"description": "Title for the PDF report",
+						},
+					},
+				},
+			),
+			Tool(
+				name="export_custom_query_to_excel",
+				description="Export custom query results to Excel with multiple analysis sheets",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"query_type": {
+							"type": "string",
+							"enum": [
+								"comprehensive_sales",
+								"customer_analysis",
+								"product_performance",
+							],
+							"description": "Type of analysis to export",
+						},
+						"filters": {
+							"type": "object",
+							"description": "Additional filters for the analysis",
+							"properties": {
+								"start_date": {"type": "string", "format": "date"},
+								"end_date": {"type": "string", "format": "date"},
+								"category": {"type": "string"},
+							},
+						},
+						"export_format": {
+							"type": "string",
+							"enum": ["xlsx"],
+							"default": "xlsx",
+							"description": "Export format (currently only Excel supported)",
+						},
+					},
+					"required": ["query_type"],
+				},
+			),
 		]
 
 	@classmethod
@@ -831,6 +936,7 @@ class ToolDefinitions:
 			+ cls.get_analytics_tools()
 			+ cls.get_discovery_tools()
 			+ cls.get_chart_tools()
+			+ cls.get_file_tools()
 		)
 
 	@classmethod
@@ -1089,6 +1195,32 @@ class ToolDefinitions:
 				"group": "charts",
 				"category": "visualization",
 				"namespace": "charts.custom_query",
+			},
+			# File Export Tools
+			"export_sales_to_csv": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.sales_csv",
+			},
+			"export_customers_to_csv": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.customers_csv",
+			},
+			"export_products_to_excel": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.products_excel",
+			},
+			"export_sales_report_to_pdf": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.sales_pdf",
+			},
+			"export_custom_query_to_excel": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.custom_excel",
 			},
 		}
 
