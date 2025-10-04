@@ -69,48 +69,26 @@ class LLMService:
 
 		"""
 		current_date = datetime.now().strftime("%Y-%m-%d")
-		system_message = f"""You are an advanced AI business analyst with access to comprehensive MCP tools. Today's date is {current_date}.
+		system_message = f"""You are an AI business analyst with comprehensive MCP tools. Today's date is {current_date}.
 
-You have access to enhanced business analytics including:
-- Advanced sales analytics with AI-powered insights
-- Customer behavior analysis and segmentation
-- Product performance analysis with recommendations
-- Business trend analysis and forecasting
-- Anomaly detection and risk assessment
-- Period comparisons with detailed analysis
-- Chart Generation and Visualization Tools
+Core capabilities: sales analytics, customer analysis, product insights, trend forecasting, anomaly detection, and period comparisons.
 
-When users ask about time periods like "last month" or "this month", calculate the appropriate dates.
-Use the available MCP tools to query the database and provide accurate, insightful answers with AI-powered analysis.
+For visualization requests ("show me", "create chart", "visualize"), use chart tools:
+- create_sales_trend_chart, create_top_products_chart, create_customer_analysis_chart
+- create_sales_comparison_chart, create_custom_query_chart
 
-For requests involving trends, comparisons, or data visualization (like "show me", "create a chart", "visualize"), ALWAYS use the available chart tools to provide visual representations of the data. The chart tools will generate PNG images that will be displayed in the frontend.
+For file requests ("export", "download", "generate report"), use export tools:
+- export_sales_to_csv, export_customers_to_csv, export_products_to_excel
+- export_sales_report_to_pdf, export_custom_query_to_excel
 
-Available chart tools:
-- create_sales_trend_chart - For sales trends over time
-- create_top_products_chart - For top products by revenue/quantity  
-- create_customer_analysis_chart - For customer analysis
-- create_sales_comparison_chart - For comparing two time periods
-- create_custom_query_chart - For custom SQL-based charts
+Guidelines:
+- Calculate dates for relative time queries ("last month", "this month")
+- Use visualization tools for trend/comparison requests instead of tables only
+- Provide specific numbers, percentages, and actionable insights
+- Format data as professional markdown tables with proper alignment
+- Include totals/averages when appropriate
 
-When a user asks for "trends", "show me sales trends", "visualize data", or similar requests, use these chart tools instead of just returning tabular data.
-Always include specific numbers, percentages, trends, and actionable recommendations.
-Be proactive in offering relevant insights and business intelligence based on the data.
-
-IMPORTANT: When presenting data, always format it as a well-structured markdown table with:
-- Clear, descriptive column headers
-- Properly aligned data (numbers right-aligned, text left-aligned)
-- Consistent formatting for currency, percentages, and numbers
-- Use proper markdown table syntax with pipes (|) and alignment
-- Include summary rows when appropriate (totals, averages, etc.)
-- Ensure tables are readable and professional
-
-Example format:
-| Metric | Value | Change | Change % |
-|--------|-------|--------|----------|
-| Sales  | $1,234| +$100  | +8.8%    |
-
-Return the data from the database as a properly formatted markdown table.
-"""
+Table format: | Metric | Value | Change % | with right-aligned numbers."""
 
 		openai_tools = []
 		for tool_info in mcp_tools:
@@ -201,11 +179,18 @@ Return the data from the database as a properly formatted markdown table.
 		else:
 			data = tool_results
 
-		return {
+		files = self._extract_file_info(tool_results)
+
+		response = {
 			"answer": final_response.choices[0].message.content,
 			"data": data,
 			"query": user_query,
 		}
+
+		if files:
+			response["files"] = files
+
+		return response
 
 	async def simple_chat_completion(
 		self,
@@ -237,3 +222,67 @@ Return the data from the database as a properly formatted markdown table.
 		)
 
 		return response.choices[0].message.content or "I couldn't process your query."
+
+	def _extract_file_info(
+		self, tool_results: list[dict[str, Any]]
+	) -> list[dict[str, Any]] | None:
+		"""Extract file information from tool results.
+
+		Args:
+			tool_results: List of tool execution results
+
+		Returns:
+			List of file information if any files were generated, None otherwise
+		"""
+		files = []
+
+		for result in tool_results:
+			if isinstance(result, dict):
+				if (result.get("file_url") and result.get("filename")) or (
+					result.get("success") is False
+					and "export" in str(result.get("message", "")).lower()
+				):
+					file_info = {
+						"url": result.get("file_url"),
+						"filename": result.get("filename"),
+						"type": self._get_file_type_from_url(
+							result.get("file_url", "")
+						),
+						"success": result.get("success", True),
+						"message": result.get("message", ""),
+					}
+
+					if "record_count" in result:
+						file_info["record_count"] = result["record_count"]
+					if "sheets" in result:
+						file_info["sheets"] = result["sheets"]
+					if "columns" in result:
+						file_info["columns"] = result["columns"]
+					if "summary" in result:
+						file_info["summary"] = result["summary"]
+
+					files.append(file_info)
+
+		return files if files else None
+
+	def _get_file_type_from_url(self, url: str) -> str:
+		"""Extract file type from URL.
+
+		Args:
+			url: File URL
+
+		Returns:
+			File type (csv, pdf, xlsx, etc.)
+		"""
+		if not url:
+			return "unknown"
+		if url.endswith(".csv"):
+			return "csv"
+		elif url.endswith(".pdf"):
+			return "pdf"
+		elif url.endswith(".xlsx"):
+			return "xlsx"
+		elif url.endswith(".png"):
+			return "png"
+		else:
+			return "unknown"
