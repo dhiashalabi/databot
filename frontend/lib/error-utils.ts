@@ -2,16 +2,17 @@
  * Error handling utilities and formatters
  */
 
-import type { AppError, EnhancedError, ErrorResponse, ApiResponse, ErrorSeverity } from "@/types"
+import type { ErrorResponse, ChatApiResponse } from "@/types/api-types"
+import type { AppError, EnhancedError, ErrorSeverity } from "@/types/error-types"
 
-export function isErrorResponse(response: ApiResponse): response is ErrorResponse {
+export function isErrorResponse(response: ChatApiResponse): response is ErrorResponse {
   return "error" in response && response.error !== undefined
 }
 
 /**
  * Extract error from API response
  */
-export function extractErrorFromResponse(response: ApiResponse): AppError | null {
+export function extractErrorFromResponse(response: ChatApiResponse): AppError | null {
   if (!isErrorResponse(response)) {
     return null
   }
@@ -22,7 +23,7 @@ export function extractErrorFromResponse(response: ApiResponse): AppError | null
     return {
       type: "validation_error",
       message: error.message,
-      validation_errors: error.validation_errors,
+      validation_errors: error.validation_errors ?? [],
       suggestions: error.suggestions,
     }
   }
