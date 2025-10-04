@@ -39,3 +39,4 @@ build/
 dist/
 *.egg-info/
 .vercel
+generated_files/
