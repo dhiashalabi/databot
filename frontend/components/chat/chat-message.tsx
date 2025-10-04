@@ -18,6 +18,15 @@ interface ChatMessageProps {
   onCopy: (text: string, id: string) => void
   timestamp: Date
   isTyping?: boolean
+  files?: Array<{
+    url: string
+    filename: string
+    type?: string
+    success?: boolean
+    message?: string
+    record_count?: number
+    sheets?: string[]
+  }>
 }
 
 export function ChatMessage({
@@ -30,6 +39,7 @@ export function ChatMessage({
   onCopy,
   timestamp,
   isTyping,
+  files,
 }: ChatMessageProps) {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", {
@@ -44,7 +54,13 @@ export function ChatMessage({
       <div className={cn("flex gap-4", isUser && "flex-row-reverse")}>
         <MessageAvatar isUser={isUser} />
         <div className="flex-1">
-          <MessageContent content={content} isUser={isUser} data={data} error={error} />
+          <MessageContent
+            content={content}
+            isUser={isUser}
+            data={data}
+            error={error}
+            files={files}
+          />
           <div className={cn("mt-2 text-xs text-muted-foreground", isUser && "text-right")}>
             {formatTime(timestamp)}
           </div>
