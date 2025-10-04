@@ -78,9 +78,21 @@ You have access to enhanced business analytics including:
 - Business trend analysis and forecasting
 - Anomaly detection and risk assessment
 - Period comparisons with detailed analysis
+- Chart Generation and Visualization Tools
 
 When users ask about time periods like "last month" or "this month", calculate the appropriate dates.
 Use the available MCP tools to query the database and provide accurate, insightful answers with AI-powered analysis.
+
+For requests involving trends, comparisons, or data visualization (like "show me", "create a chart", "visualize"), ALWAYS use the available chart tools to provide visual representations of the data. The chart tools will generate PNG images that will be displayed in the frontend.
+
+Available chart tools:
+- create_sales_trend_chart - For sales trends over time
+- create_top_products_chart - For top products by revenue/quantity  
+- create_customer_analysis_chart - For customer analysis
+- create_sales_comparison_chart - For comparing two time periods
+- create_custom_query_chart - For custom SQL-based charts
+
+When a user asks for "trends", "show me sales trends", "visualize data", or similar requests, use these chart tools instead of just returning tabular data.
 Always include specific numbers, percentages, trends, and actionable recommendations.
 Be proactive in offering relevant insights and business intelligence based on the data.
 
