@@ -16,7 +16,7 @@ class DataSanitizer:
 			r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
 		)
 		self.phone_pattern = re.compile(
-			r"(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})"
+			r"(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3,4})([-.\s]?([0-9]{4}))?"
 		)
 		self.ssn_pattern = re.compile(r"\b\d{3}-?\d{2}-?\d{4}\b")
 		self.credit_card_pattern = re.compile(
@@ -89,7 +89,7 @@ class DataSanitizer:
 				phone in field_name.lower()
 				for phone in ["phone", "mobile", "telephone"]
 			):
-				return self._mask_phone(value)
+				return self._mask_phone_string(value)
 			elif "ssn" in field_name.lower() or "social" in field_name.lower():
 				return "***-**-****"
 			elif any(
@@ -112,13 +112,22 @@ class DataSanitizer:
 		else:
 			return f"{local[:3]}***@{domain}"
 
-	def _mask_phone(self, phone: str) -> str:
+	def _mask_phone(self, match) -> str:
 		"""Mask phone number showing only last 4 digits."""
+		phone = match.group(0)
 		digits = re.sub(r"\D", "", phone)
 		if len(digits) >= 4:
-			return f"***-***-{digits[-4:]}"
+			return f"XXX-XXX-{digits[-4:]}"
 		else:
-			return "***-***-****"
+			return "XXX-XXX-XXXX"
+
+	def _mask_phone_string(self, phone: str) -> str:
+		"""Mask phone number string (for dictionary fields)."""
+		digits = re.sub(r"\D", "", phone)
+		if len(digits) >= 4:
+			return f"XXX-XXX-{digits[-4:]}"
+		else:
+			return "XXX-XXX-XXXX"
 
 	def _mask_generic(self, value: str) -> str:
 		"""Generic masking for other sensitive fields."""
