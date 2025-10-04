@@ -666,6 +666,159 @@ class ToolDefinitions:
 			),
 		]
 
+	@staticmethod
+	def get_chart_tools() -> list[Tool]:
+		"""Get chart generation and visualization tools."""
+		return [
+			Tool(
+				name="create_sales_trend_chart",
+				description="Create a sales trend chart showing revenue over time",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"period": {
+							"type": "string",
+							"enum": ["day", "week", "month", "year"],
+							"default": "month"
+						},
+						"limit": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 12
+						},
+						"chart_type": {
+							"type": "string",
+							"enum": ["line", "bar"],
+							"default": "line"
+						}
+					}
+				}
+			),
+			Tool(
+				name="create_top_products_chart",
+				description="Create a chart showing top products by revenue or quantity",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"limit": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 50,
+							"default": 10
+						},
+						"chart_type": {
+							"type": "string",
+							"enum": ["bar", "pie"],
+							"default": "bar"
+						},
+						"metric": {
+							"type": "string",
+							"enum": ["revenue", "quantity"],
+							"default": "revenue"
+						}
+					}
+				}
+			),
+			Tool(
+				name="create_sales_by_category_chart",
+				description="Create a chart showing sales breakdown by product category",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"start_date": {
+							"type": "string",
+							"format": "date"
+						},
+						"chart_type": {
+							"type": "string",
+							"enum": ["pie", "bar"],
+							"default": "pie"
+						}
+					}
+				}
+			),
+			Tool(
+				name="create_customer_analysis_chart",
+				description="Create a chart showing top customers by revenue",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"limit": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 50,
+							"default": 10
+						},
+						"chart_type": {
+							"type": "string",
+							"enum": ["bar", "pie"],
+							"default": "bar"
+						}
+					}
+				}
+			),
+			Tool(
+				name="create_sales_comparison_chart",
+				description="Create a chart comparing sales between two periods",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"period1_start": {
+							"type": "string",
+							"format": "date"
+						},
+						"period1_end": {
+							"type": "string",
+							"format": "date"
+						},
+						"period2_start": {
+							"type": "string",
+							"format": "date"
+						},
+						"period2_end": {
+							"type": "string",
+							"format": "date"
+						},
+						"chart_type": {
+							"type": "string",
+							"enum": ["bar"],
+							"default": "bar"
+						}
+					},
+					"required": ["period1_start", "period1_end", "period2_start", "period2_end"]
+				}
+			),
+			Tool(
+				name="create_custom_query_chart",
+				description="Create a chart from a custom SQL query",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"sql_query": {
+							"type": "string"
+						},
+						"chart_type": {
+							"type": "string",
+							"enum": ["bar", "line", "pie"],
+							"default": "bar"
+						},
+						"x_column": {
+							"type": "string"
+						},
+						"y_column": {
+							"type": "string"
+						},
+						"title": {
+							"type": "string",
+							"default": "Custom Chart"
+						}
+					},
+					"required": ["sql_query"]
+				}
+			)
+		]
+
 	@classmethod
 	def get_all_tools(cls) -> list[Tool]:
 		"""Get all available tools."""
@@ -677,6 +830,7 @@ class ToolDefinitions:
 			+ cls.get_invoice_tools()
 			+ cls.get_analytics_tools()
 			+ cls.get_discovery_tools()
+			+ cls.get_chart_tools()
 		)
 
 	@classmethod
@@ -904,6 +1058,37 @@ class ToolDefinitions:
 				"group": "discovery",
 				"category": "metadata",
 				"namespace": "discovery.metadata",
+			},
+			# Chart Tools
+			"create_sales_trend_chart": {
+				"group": "charts",
+				"category": "visualization",
+				"namespace": "charts.sales_trend",
+			},
+			"create_top_products_chart": {
+				"group": "charts",
+				"category": "visualization",
+				"namespace": "charts.top_products",
+			},
+			"create_sales_by_category_chart": {
+				"group": "charts",
+				"category": "visualization",
+				"namespace": "charts.sales_by_category",
+			},
+			"create_customer_analysis_chart": {
+				"group": "charts",
+				"category": "visualization",
+				"namespace": "charts.customer_analysis",
+			},
+			"create_sales_comparison_chart": {
+				"group": "charts",
+				"category": "visualization",
+				"namespace": "charts.sales_comparison",
+			},
+			"create_custom_query_chart": {
+				"group": "charts",
+				"category": "visualization",
+				"namespace": "charts.custom_query",
 			},
 		}
 
