@@ -3,17 +3,23 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from src.auth.dependencies import get_current_active_user
 from src.database import get_db
 from src.errors.error_handler import ErrorHandler
 from src.errors.exceptions import DataBotException, ValidationError
 from src.mcp.agent import DataBotAgent
+from src.models.user import User
 from src.schemas.chat import ChatRequest, ChatResponse
 
 router = APIRouter()
 
 
 @router.post("/chat", response_model=ChatResponse)
-async def chat_with_ai(message: ChatRequest, db: AsyncSession = Depends(get_db)):
+async def chat_with_ai(
+	message: ChatRequest,
+	db: AsyncSession = Depends(get_db),
+	current_user: User = Depends(get_current_active_user),
+):
 	"""Chat with AI assistant about your business data.
 
 	This endpoint uses MCP (Model Context Protocol) with AI-powered insights to understand
