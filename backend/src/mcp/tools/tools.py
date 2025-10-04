@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .analytics_tools import AnalyticsTools
 from .base_tools import BaseTools
+from .chart_tools import ChartTools
 from .customer_tools import CustomerTools
 from .invoice_tools import InvoiceTools
 from .product_tools import ProductTools
@@ -22,6 +23,7 @@ class MCPTools(BaseTools):
 		self.products = ProductTools(db)
 		self.invoices = InvoiceTools(db)
 		self.analytics = AnalyticsTools(db)
+		self.charts = ChartTools(db)
 
 	async def get_sales_by_period(
 		self, start_date: str, end_date: str | None = None
@@ -239,3 +241,53 @@ class MCPTools(BaseTools):
 	) -> dict[str, Any]:
 		"""Comprehensive revenue analysis."""
 		return await self.analytics.get_revenue_analysis(start_date, end_date)
+
+	async def create_sales_trend_chart(
+		self, period: str = "month", limit: int = 12, chart_type: str = "line"
+	) -> dict[str, Any]:
+		"""Create a sales trend chart showing revenue over time."""
+		return await self.charts.create_sales_trend_chart(period, limit, chart_type)
+
+	async def create_sales_by_category_chart(
+		self, start_date: str | None = None, chart_type: str = "pie"
+	) -> dict[str, Any]:
+		"""Create a sales by category chart."""
+		return await self.charts.create_sales_by_category_chart(start_date, chart_type)
+
+	async def create_top_products_chart(
+		self, limit: int = 10, chart_type: str = "bar", metric: str = "revenue"
+	) -> dict[str, Any]:
+		"""Create a chart showing top products by revenue or quantity."""
+		return await self.charts.create_top_products_chart(limit, chart_type, metric)
+
+	async def create_customer_analysis_chart(
+		self, limit: int = 10, chart_type: str = "bar"
+	) -> dict[str, Any]:
+		"""Create a chart showing top customers by revenue."""
+		return await self.charts.create_customer_analysis_chart(limit, chart_type)
+
+	async def create_sales_comparison_chart(
+		self,
+		period1_start: str,
+		period1_end: str,
+		period2_start: str,
+		period2_end: str,
+		chart_type: str = "bar",
+	) -> dict[str, Any]:
+		"""Create a chart comparing sales between two periods."""
+		return await self.charts.create_sales_comparison_chart(
+			period1_start, period1_end, period2_start, period2_end, chart_type
+		)
+
+	async def create_custom_query_chart(
+		self,
+		sql_query: str,
+		chart_type: str = "bar",
+		x_column: str | None = None,
+		y_column: str | None = None,
+		title: str = "Custom Chart",
+	) -> dict[str, Any]:
+		"""Create a chart from a custom SQL query."""
+		return await self.charts.create_custom_query_chart(
+			sql_query, chart_type, x_column, y_column, title
+		)
