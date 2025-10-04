@@ -27,23 +27,6 @@ export interface UnknownError {
 
 export type AppError = ValidationError | BackendError | NetworkError | UnknownError
 
-export interface ErrorResponse {
-  error: {
-    answer: string
-    data: unknown | null
-    query: string
-    error: ValidationError | BackendError
-  }
-}
-
-export interface SuccessResponse {
-  answer: string
-  data: unknown[] | null
-  query: string
-}
-
-export type ApiResponse = ErrorResponse | SuccessResponse
-
 export type ErrorSeverity = "low" | "medium" | "high" | "critical"
 
 export type ErrorCategory =
