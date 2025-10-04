@@ -20,10 +20,13 @@ export function useHealthCheck(): HealthStatus {
     queryKey: HEALTH_CHECK_QUERY_KEY,
     queryFn: checkHealth,
     refetchInterval: 30 * 1000,
-    staleTime: 10 * 1000,
-    gcTime: 60 * 1000,
-    retry: 2,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    retry: 1,
+    retryDelay: 2000,
     refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    enabled: true,
   })
 
   return {
