@@ -6,6 +6,7 @@ from .analytics_tools import AnalyticsTools
 from .base_tools import BaseTools
 from .chart_tools import ChartTools
 from .customer_tools import CustomerTools
+from .file_tools import FileTools
 from .invoice_tools import InvoiceTools
 from .product_tools import ProductTools
 from .sales_tools import SalesTools
@@ -24,6 +25,7 @@ class MCPTools(BaseTools):
 		self.invoices = InvoiceTools(db)
 		self.analytics = AnalyticsTools(db)
 		self.charts = ChartTools(db)
+		self.files = FileTools(db)
 
 	async def get_sales_by_period(
 		self, start_date: str, end_date: str | None = None
@@ -290,4 +292,51 @@ class MCPTools(BaseTools):
 		"""Create a chart from a custom SQL query."""
 		return await self.charts.create_custom_query_chart(
 			sql_query, chart_type, x_column, y_column, title
+		)
+
+	async def export_sales_to_csv(
+		self,
+		start_date: str | None = None,
+		end_date: str | None = None,
+		include_details: bool = True,
+	) -> dict[str, Any]:
+		"""Export sales data to CSV format."""
+		return await self.files.export_sales_to_csv(
+			start_date, end_date, include_details
+		)
+
+	async def export_customers_to_csv(
+		self, customer_type: str | None = None, include_sales_summary: bool = True
+	) -> dict[str, Any]:
+		"""Export customer data to CSV format."""
+		return await self.files.export_customers_to_csv(
+			customer_type, include_sales_summary
+		)
+
+	async def export_products_to_excel(
+		self, category: str | None = None, include_sales_data: bool = True
+	) -> dict[str, Any]:
+		"""Export product data to Excel format."""
+		return await self.files.export_products_to_excel(category, include_sales_data)
+
+	async def export_sales_report_to_pdf(
+		self,
+		start_date: str | None = None,
+		end_date: str | None = None,
+		report_title: str = "Sales Report",
+	) -> dict[str, Any]:
+		"""Export sales report to PDF format."""
+		return await self.files.export_sales_report_to_pdf(
+			start_date, end_date, report_title
+		)
+
+	async def export_custom_query_to_excel(
+		self,
+		query_type: str,
+		filters: dict[str, Any] | None = None,
+		export_format: str = "xlsx",
+	) -> dict[str, Any]:
+		"""Export custom query results to Excel format."""
+		return await self.files.export_custom_query_to_excel(
+			query_type, filters, export_format
 		)
