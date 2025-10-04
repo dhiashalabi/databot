@@ -172,10 +172,10 @@ class MCPServer:
 
 	async def _initialize_database(self):
 		"""Initialize database using enhanced database.py."""
-		from src.database import get_session_maker, initialize_database
+		from src.database import get_session_maker, init_db
 
 		try:
-			await initialize_database()
+			await init_db()
 
 			session_maker = await get_session_maker()
 			self.db_session = session_maker()
