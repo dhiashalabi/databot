@@ -3,10 +3,9 @@
 import logging
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.database import get_db
+from src.database import get_db, health_check as db_health_check
 from src.mcp.mcp_client import mcp_client
 
 router = APIRouter()
@@ -60,16 +59,15 @@ async def health_check(db: AsyncSession = Depends(get_db)):
 		"overall_status": "unknown",
 	}
 
-	try:
-		result = await db.execute(text("SELECT 1"))
-		result.scalar()
+	db_health = await db_health_check()
+	if db_health["status"] == "healthy":
 		health_status["database"]["status"] = "connected"
 		logger.info("Database health check successful")
-	except Exception as e:
+	else:
 		health_status["database"]["status"] = "disconnected"
-		health_status["database"]["error"] = str(e)
+		health_status["database"]["error"] = db_health["message"]
 		health_status["status"] = "unhealthy"
-		logger.error(f"Database health check failed: {e}")
+		logger.error(f"Database health check failed: {db_health['message']}")
 
 	try:
 		await mcp_client.connect()
