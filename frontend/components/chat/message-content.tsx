@@ -1,9 +1,10 @@
 "use client"
 
+import Image from "next/image"
+import React from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 
-import { DataViewer } from "./data-viewer"
 import { ErrorDisplay, ValidationErrorDisplay } from "./error-display"
 
 import { enhanceError } from "@/lib/error-utils"
@@ -17,7 +18,92 @@ interface MessageContentProps {
   error?: EnhancedError | unknown
 }
 
-export function MessageContent({ content, isUser, data, error }: MessageContentProps) {
+function SimpleChartImage({ src, alt }: { src: string; alt?: string }) {
+  if (!src || typeof src !== "string") {
+    return null
+  }
+
+  let imageUrl = src.replace(/^sandbox:/, "")
+  if (!imageUrl.startsWith("http")) {
+    imageUrl = `http://localhost:8000${imageUrl}`
+  }
+
+  return (
+    <div className="my-4 flex justify-center">
+      <Image
+        src={imageUrl}
+        alt={alt || "Chart"}
+        className="max-w-full h-auto rounded-lg border border-border shadow-sm"
+        width={1000}
+        height={1000}
+        onError={e => {
+          e.currentTarget.style.opacity = "0.5"
+        }}
+      />
+    </div>
+  )
+}
+
+function EnhancedChartImage({ src, alt, metadata }: { src: string; alt?: string; metadata?: any }) {
+  if (!src || typeof src !== "string") {
+    return null
+  }
+
+  let imageUrl = src.replace(/^sandbox:/, "")
+  if (!imageUrl.startsWith("http")) {
+    imageUrl = `http://localhost:8000${imageUrl}`
+  }
+
+  return (
+    <div className="my-6 flex flex-col items-center">
+      <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+        <Image
+          src={imageUrl}
+          alt={alt || "Generated Chart"}
+          className="max-w-full h-auto rounded-md"
+          width={1000}
+          height={1000}
+          onError={e => {
+            e.currentTarget.style.opacity = "0.5"
+          }}
+        />
+
+        {metadata && (
+          <div className="mt-3 space-y-1">
+            {metadata.title && (
+              <p className="text-sm font-medium text-foreground text-center">{metadata.title}</p>
+            )}
+            {(metadata.x_label || metadata.y_label) && (
+              <p className="text-xs text-muted-foreground text-center">
+                {metadata.x_label && metadata.y_label
+                  ? `${metadata.x_label} vs ${metadata.y_label}`
+                  : metadata.x_label || metadata.y_label}
+              </p>
+            )}
+            {(metadata.total_revenue || metadata.avg_revenue) && (
+              <div className="flex justify-center space-x-4 text-xs text-muted-foreground">
+                {metadata.total_revenue && (
+                  <span>Total: ${metadata.total_revenue.toLocaleString()}</span>
+                )}
+                {metadata.avg_revenue && <span>Avg: ${metadata.avg_revenue.toLocaleString()}</span>}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {alt && !metadata?.title && (
+        <p className="mt-2 text-sm text-muted-foreground text-center">{alt}</p>
+      )}
+    </div>
+  )
+}
+
+export function MessageContent({ content, isUser, data: _data, error }: MessageContentProps) {
+  const processedContent = !isUser
+    ? content.replace(/!\[([^\]]*)\]\(sandbox:([^)]+)\)/g, "![$1]($2)")
+    : content
+
   if (error && !isUser) {
     const enhancedError = enhanceError(error)
 
@@ -88,16 +174,30 @@ export function MessageContent({ content, isUser, data, error }: MessageContentP
               td: ({ children }) => (
                 <td className="border border-border px-4 py-3 text-foreground">{children}</td>
               ),
+              img: ({ src, alt }) => {
+                if (!src || typeof src !== "string") return null
+
+                return <SimpleChartImage src={src} alt={alt} />
+              },
             }}
           >
-            {content}
+            {processedContent}
           </ReactMarkdown>
         </div>
       )}
 
-      {data ? (
+      {_data &&
+      typeof _data === "object" &&
+      _data !== null &&
+      "chart_url" in _data &&
+      (_data as any).chart_url &&
+      !content.includes((_data as any).chart_url) ? (
         <div className="pt-4">
-          <DataViewer data={data} />
+          <EnhancedChartImage
+            src={(_data as any).chart_url}
+            alt={(_data as any).metadata?.title || "Generated Chart"}
+            metadata={(_data as any).metadata}
+          />
         </div>
       ) : null}
     </div>
