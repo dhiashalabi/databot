@@ -128,6 +128,9 @@ export function MessageContent({ content, isUser, data: _data, error }: MessageC
     )
   }
 
+  // Check if data contains HTML content
+  const hasHtmlData = _data && typeof _data === "string" && _data.includes("<")
+
   return (
     <div className={cn("flex-1 space-y-2 pt-1", isUser && "flex flex-col items-end")}>
       {isUser ? (
@@ -186,6 +189,15 @@ export function MessageContent({ content, isUser, data: _data, error }: MessageC
         </div>
       )}
 
+      {/* Render HTML data if present */}
+      {hasHtmlData && (
+        <div 
+          className="prose prose-invert max-w-none text-[15px] leading-7 text-foreground"
+          dangerouslySetInnerHTML={{ __html: _data as string }}
+        />
+      )}
+
+      {/* Render chart data if present */}
       {_data &&
       typeof _data === "object" &&
       _data !== null &&
