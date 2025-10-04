@@ -7,6 +7,7 @@ from sqlalchemy import desc, func, select
 from src.models.customer import Customer
 from src.models.sales import Sale
 from src.queries import CustomerQueryBuilder
+from src.utils.fuzzy_search import find_fuzzy_matches, sanitize_search_term
 
 from .base_tools import BaseTools
 
@@ -35,16 +36,43 @@ class CustomerTools(BaseTools):
 			return []
 
 	async def get_customer_details(self, customer_name: str) -> dict | None:
-		"""Get detailed information about a specific customer."""
+		"""Get detailed information about a specific customer with fuzzy matching fallback."""
 		try:
-			customer_query = select(Customer).where(
-				Customer.customer_name.ilike(f"%{customer_name}%")
+			sanitized_name = sanitize_search_term(customer_name)
+			if not sanitized_name:
+				return None
+
+			customer_query = CustomerQueryBuilder.build_customer_details_query(
+				sanitized_name
 			)
 			customer_result = await self.db.execute(customer_query)
 			customer = customer_result.scalar_one_or_none()
 
 			if not customer:
-				return None
+				fuzzy_result = await self._fuzzy_search_customers(
+					sanitized_name, threshold=0.5, limit=1
+				)
+
+				if fuzzy_result.get("customers"):
+					best_match = fuzzy_result["customers"][0]
+					customer_id = best_match["id"]
+					customer_query = select(Customer).where(Customer.id == customer_id)
+					customer_result = await self.db.execute(customer_query)
+					customer = customer_result.scalar_one_or_none()
+
+					if customer:
+						fuzzy_info = {
+							"fuzzy_match": True,
+							"original_search": customer_name,
+							"matched_name": customer.customer_name,
+							"similarity_score": best_match["similarity_score"],
+						}
+					else:
+						return None
+				else:
+					return None
+			else:
+				fuzzy_info = {"fuzzy_match": False}
 
 			sales_query = (
 				select(Sale)
@@ -57,7 +85,7 @@ class CustomerTools(BaseTools):
 			total_spent = sum(float(sale.amount) for sale in sales)
 			avg_purchase = total_spent / len(sales) if sales else 0
 
-			return {
+			result = {
 				"customer": self._format_customer_data(customer),
 				"sales": [self._format_sale_data(sale) for sale in sales],
 				"metrics": {
@@ -67,6 +95,11 @@ class CustomerTools(BaseTools):
 					"last_purchase": sales[0].sale_date.isoformat() if sales else None,
 				},
 			}
+
+			if fuzzy_info.get("fuzzy_match"):
+				result["fuzzy_info"] = fuzzy_info
+
+			return result
 		except Exception:
 			return None
 
@@ -100,31 +133,95 @@ class CustomerTools(BaseTools):
 		customer_type: str | None = None,
 		limit: int = 20,
 	) -> list[dict[str, Any]]:
-		"""Search customers by various criteria."""
+		"""Search customers by various criteria with fuzzy matching fallback."""
 		try:
-			from sqlalchemy import or_
-
-			query = select(Customer)
-
 			if search_term:
-				search_filter = or_(
-					Customer.customer_name.ilike(f"%{search_term}%"),
-					Customer.email.ilike(f"%{search_term}%"),
-					Customer.company.ilike(f"%{search_term}%"),
+				sanitized_term = sanitize_search_term(search_term)
+				if not sanitized_term:
+					return []
+
+				query = CustomerQueryBuilder.build_customer_search_query(
+					sanitized_term, limit
 				)
-				query = query.where(search_filter)
+			else:
+				query = select(Customer).limit(limit).order_by(Customer.customer_name)
 
 			if customer_type:
 				query = query.where(Customer.customer_type == customer_type)
 
-			query = query.limit(limit).order_by(Customer.customer_name)
-
 			result = await self.db.execute(query)
 			customers = result.scalars().all()
+
+			if not customers and search_term:
+				fuzzy_result = await self._fuzzy_search_customers(
+					sanitized_term, threshold=0.5, limit=limit
+				)
+				return fuzzy_result.get("customers", [])
 
 			return [self._format_customer_data(customer) for customer in customers]
 		except Exception:
 			return []
+
+	async def _fuzzy_search_customers(
+		self,
+		search_term: str,
+		threshold: float = 0.5,
+		limit: int = 10,
+	) -> dict[str, Any]:
+		"""Internal fuzzy search method with ILIKE pre-filtering for efficiency."""
+		try:
+			sanitized_term = sanitize_search_term(search_term)
+			if not sanitized_term:
+				return {"customers": []}
+
+			candidates_query = CustomerQueryBuilder.build_fuzzy_search_candidates_query(
+				sanitized_term, limit=50
+			)
+
+			result = await self.db.execute(candidates_query)
+			candidate_customers = result.fetchall()
+
+			if not candidate_customers:
+				return {"customers": []}
+
+			customer_names = [
+				customer.customer_name for customer in candidate_customers
+			]
+
+			fuzzy_matches = find_fuzzy_matches(
+				sanitized_term, customer_names, threshold
+			)
+
+			if not fuzzy_matches:
+				return {"customers": []}
+
+			matched_names = [match[0] for match in fuzzy_matches[:limit]]
+			customers_query = select(Customer).where(
+				Customer.customer_name.in_(matched_names)
+			)
+			customers_result = await self.db.execute(customers_query)
+			customers = customers_result.scalars().all()
+
+			customers_data = []
+			for customer in customers:
+				customer_data = self._format_customer_data(customer)
+				similarity = next(
+					(
+						score
+						for name, score in fuzzy_matches
+						if name == customer.customer_name
+					),
+					0.0,
+				)
+				customer_data["similarity_score"] = round(similarity, 3)
+				customers_data.append(customer_data)
+
+			customers_data.sort(key=lambda x: x["similarity_score"], reverse=True)
+
+			return {"customers": customers_data}
+
+		except Exception:
+			return {"customers": []}
 
 	async def get_customer_purchase_history(
 		self, customer_id: int, limit: int = 50
@@ -138,11 +235,8 @@ class CustomerTools(BaseTools):
 			if not customer:
 				return {"error": "Customer not found"}
 
-			sales_query = (
-				select(Sale)
-				.where(Sale.customer_id == customer_id)
-				.order_by(desc(Sale.sale_date))
-				.limit(limit)
+			sales_query = CustomerQueryBuilder.build_customer_purchase_history_query(
+				customer_id, limit
 			)
 			sales_result = await self.db.execute(sales_query)
 			sales = sales_result.scalars().all()
