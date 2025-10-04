@@ -43,6 +43,7 @@ export function MessagesContainer({
             onCopy={onCopy}
             timestamp={message.timestamp}
             isTyping={message.isTyping}
+            files={message.files}
           />
         ))}
 
