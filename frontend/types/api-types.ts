@@ -2,6 +2,15 @@ export interface ApiResponse {
   answer: string
   data: unknown | null
   query: string
+  files?: Array<{
+    url: string
+    filename: string
+    type?: string
+    success?: boolean
+    message?: string
+    record_count?: number
+    sheets?: string[]
+  }>
 }
 
 export interface ErrorResponse {
