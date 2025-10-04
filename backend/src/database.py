@@ -18,7 +18,7 @@ _initialization_lock = asyncio.Lock()
 _is_initialized = False
 
 
-async def initialize_database() -> None:
+async def init_db() -> None:
 	"""Initialize database engine and session maker."""
 	global engine, async_session_maker, _is_initialized
 
@@ -54,14 +54,14 @@ async def initialize_database() -> None:
 async def get_session_maker():
 	"""Get the session maker, initializing if needed."""
 	if not _is_initialized:
-		await initialize_database()
+		await init_db()
 	return async_session_maker
 
 
 async def get_engine():
 	"""Get the database engine, initializing if needed."""
 	if not _is_initialized:
-		await initialize_database()
+		await init_db()
 	return engine
 
 
@@ -78,7 +78,7 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
 		AsyncSession: Database session.
 	"""
 	if not _is_initialized:
-		await initialize_database()
+		await init_db()
 
 	async with async_session_maker() as session:
 		try:
@@ -100,7 +100,7 @@ async def health_check() -> dict:
 	"""Check database health."""
 	try:
 		if not _is_initialized:
-			await initialize_database()
+			await init_db()
 
 		async with async_session_maker() as session:
 			await session.execute(text("SELECT 1"))
