@@ -16,12 +16,13 @@ class DataSanitizer:
 			r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b"
 		)
 		self.phone_pattern = re.compile(
-			r"(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3,4})([-.\s]?([0-9]{4}))?"
+			r"(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3,4})([-.\s]?([0-9]{4}))?(?!\w)"
 		)
 		self.ssn_pattern = re.compile(r"\b\d{3}-?\d{2}-?\d{4}\b")
 		self.credit_card_pattern = re.compile(
 			r"\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b"
 		)
+		self.url_pattern = re.compile(r"(https?://|/static/|/api/|/assets/)[^\s]+")
 
 		self.sensitive_fields = {
 			"email",
@@ -42,6 +43,18 @@ class DataSanitizer:
 			"api_key",
 		}
 
+		self.url_fields = {
+			"url",
+			"link",
+			"href",
+			"src",
+			"chart_url",
+			"image_url",
+			"file_url",
+			"download_url",
+			"redirect_url",
+		}
+
 	def sanitize_data(self, data: Any) -> Any:
 		"""Sanitize sensitive data in any data structure."""
 		if isinstance(data, dict):
@@ -58,7 +71,9 @@ class DataSanitizer:
 		sanitized = {}
 
 		for key, value in data.items():
-			if any(sensitive in key.lower() for sensitive in self.sensitive_fields):
+			if any(url_field in key.lower() for url_field in self.url_fields):
+				sanitized[key] = value
+			elif any(sensitive in key.lower() for sensitive in self.sensitive_fields):
 				sanitized[key] = self._mask_sensitive_field(key, value)
 			else:
 				sanitized[key] = self.sanitize_data(value)
@@ -68,6 +83,9 @@ class DataSanitizer:
 	def _sanitize_string(self, text: str) -> str:
 		"""Sanitize sensitive patterns in a string."""
 		if not isinstance(text, str):
+			return text
+
+		if self.url_pattern.search(text):
 			return text
 
 		text = self.email_pattern.sub(self._mask_email, text)
