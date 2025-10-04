@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database import Base
@@ -24,7 +24,7 @@ class Sale(Base):
 		ForeignKey("invoice.id", ondelete="SET NULL"), nullable=True
 	)
 	product_name: Mapped[str] = mapped_column(String(255))
-	amount: Mapped[float] = mapped_column(Float)
+	amount: Mapped[float] = mapped_column(Numeric(10, 2))
 	quantity: Mapped[int] = mapped_column(default=1)
 	sale_date: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 	customer_name: Mapped[str | None] = mapped_column(String(255), nullable=True)
