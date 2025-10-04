@@ -5,6 +5,7 @@ import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from src.api import api_router
 from src.config import settings
@@ -34,6 +35,9 @@ app.add_middleware(
 	allow_methods=["POST", "GET", "OPTIONS"],
 	allow_headers=["*"],
 )
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 app.include_router(api_router)
 
 
