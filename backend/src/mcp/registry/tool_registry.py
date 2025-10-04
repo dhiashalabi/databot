@@ -22,6 +22,7 @@ class ToolRegistry:
 		"invoices": "data_tools",
 		"analytics": "data_tools",
 		"charts": "data_tools",
+		"files": "file_tools",
 		"discovery": "self",
 	}
 
@@ -29,6 +30,7 @@ class ToolRegistry:
 		"""Initialize the tool registry with tool execution."""
 		self.data_tools = data_tools
 		self.insights_engine = insights_engine
+		self.file_tools = data_tools
 		self.tool_definitions = ToolDefinitions()
 		self._tool_metadata = self.tool_definitions.get_tool_metadata()
 		self._namespace_aliases = self.tool_definitions.get_namespace_aliases()
@@ -50,7 +52,10 @@ class ToolRegistry:
 		return self.tool_definitions.get_tools_by_namespace(namespace)
 
 	def get_tools_filtered(
-		self, group: str = None, category: str = None, namespace: str = None
+		self,
+		group: str | None = None,
+		category: str | None = None,
+		namespace: str | None = None,
 	) -> list[Tool]:
 		"""Get tools with optional filtering by group, category, or namespace."""
 		all_tools = self.tool_definitions.get_all_tools()
