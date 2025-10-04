@@ -1,40 +1,34 @@
-"""Application configuration."""
+"""Application configuration using environment management."""
 
-import os
-
-from dotenv import load_dotenv
-
-load_dotenv()
+from .env import env
 
 
 class Settings:
-	"""Application settings."""
+	"""Application settings using centralized environment configuration."""
 
-	# Database configuration
-	DB_USER: str = os.getenv("DB_USER", "postgres")
-	DB_PASSWORD: str = os.getenv("DB_PASSWORD", "postgres")
-	DB_HOST: str = os.getenv("DB_HOST", "localhost")
-	DB_PORT: str = os.getenv("DB_PORT", "5432")
-	DB_NAME: str = os.getenv("DB_NAME", "databot")
+	DB_USER: str = env.DB_USER
+	DB_PASSWORD: str = env.DB_PASSWORD
+	DB_HOST: str = env.DB_HOST
+	DB_PORT: str = env.DB_PORT
+	DB_NAME: str = env.DB_NAME
 
-	# Application configuration
-	APP_NAME: str = "DataBot API"
-	APP_VERSION: str = "0.1.0"
-	DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
+	APP_NAME: str = env.APP_NAME
+	APP_VERSION: str = env.APP_VERSION
+	DEBUG: bool = env.DEBUG
+	LOG_LEVEL: str = env.LOG_LEVEL
 
-	# OpenAI configuration
-	OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
-	OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
+	OPENAI_API_KEY: str = env.OPENAI_API_KEY
+	OPENAI_MODEL: str = env.OPENAI_MODEL
 
 	@property
 	def database_url(self) -> str:
 		"""Generate database URL for async connections."""
-		return f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
-	
+		return env.get_database_url()
+
 	@property
 	def asyncpg_url(self) -> str:
 		"""Generate asyncpg connection URL."""
-		return f"postgresql://{self.DB_USER}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+		return env.get_asyncpg_url()
 
 
 settings = Settings()
