@@ -1,6 +1,7 @@
 "use client"
 
-import { Trash2 } from "lucide-react"
+import { LogOut, Trash2 } from "lucide-react"
+import { signOut } from "next-auth/react"
 
 import { HealthStatus } from "@/components/health-status"
 import { ModelSelector } from "@/components/model-selector"
@@ -47,6 +48,15 @@ export function ChatHeader({
           >
             <Trash2 className="mr-1.5 h-3.5 w-3.5" />
             Clear
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => signOut({ callbackUrl: "/login" })}
+            className="h-8 text-sm"
+          >
+            <LogOut className="mr-1.5 h-3.5 w-3.5" />
+            Logout
           </Button>
         </div>
       </div>
