@@ -40,13 +40,14 @@ export function useChat() {
       try {
         const response = await fetch("/api/chat", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+          },
           body: JSON.stringify({ message: content, model: selectedModel || undefined }),
         })
 
         const data: ChatApiResponse = await response.json()
 
-        // Check if the response contains an error
         if ("error" in data) {
           const enhancedError = enhanceError(data.error.error)
 
