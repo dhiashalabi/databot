@@ -8,6 +8,7 @@ export interface Message {
   data?: unknown
   error?: EnhancedError | unknown
   isTyping?: boolean
+  chat_history_id?: string
   files?: Array<{
     url: string
     filename: string
@@ -34,9 +35,14 @@ export interface ChatState {
 }
 
 export interface FeedbackRequest {
-  chat_history_id?: string
-  rating: 1 | 2 | 3 | 4 | 5
+  chat_history_id: string
+  feedback_type: "thumbs_up" | "thumbs_down" | "rating" | "detailed"
+  rating?: 1 | 2 | 3 | 4 | 5
+  is_liked?: boolean
   feedback_text?: string
-  category?: string
-  is_helpful?: boolean
+  helpfulness_rating?: 1 | 2 | 3 | 4 | 5
+  accuracy_rating?: 1 | 2 | 3 | 4 | 5
+  relevance_rating?: 1 | 2 | 3 | 4 | 5
+  suggested_improvements?: string
+  reported_issues?: string
 }

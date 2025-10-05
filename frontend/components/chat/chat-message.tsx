@@ -71,12 +71,12 @@ export function ChatMessage({
             {formatTime(timestamp)}
           </div>
           {!isUser && !isTyping && (
-            <div className="mt-2 flex items-center gap-2">
+            <div className="mt-3 flex items-center gap-3">
               <Button
                 onClick={() => onCopy(content, id)}
                 variant="outline"
                 size="icon"
-                className="h-7 w-7"
+                className="h-8 w-8"
                 title="Copy"
               >
                 {copiedId === id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}

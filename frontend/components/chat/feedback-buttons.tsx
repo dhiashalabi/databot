@@ -37,15 +37,16 @@ export function FeedbackButtons({
   const isNegativeActive = currentFeedback?.rating === "negative"
 
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1.5">
       <Button
         variant="ghost"
         size="sm"
         onClick={() => handleFeedback("positive")}
         disabled={isSubmitting || disabled}
         className={cn(
-          "h-7 w-7 p-0 text-muted-foreground hover:text-green-600",
-          isPositiveActive && "text-green-600 bg-green-50 hover:bg-green-100"
+          "h-8 w-8 p-0 text-muted-foreground hover:text-green-600 transition-all duration-200",
+          isPositiveActive &&
+            "text-green-600 bg-green-50 hover:bg-green-100 dark:bg-green-950 dark:hover:bg-green-900"
         )}
         title={isPositiveActive ? "Feedback submitted" : "Helpful response"}
       >
@@ -58,8 +59,9 @@ export function FeedbackButtons({
         onClick={() => handleFeedback("negative")}
         disabled={isSubmitting || disabled}
         className={cn(
-          "h-7 w-7 p-0 text-muted-foreground hover:text-red-600",
-          isNegativeActive && "text-red-600 bg-red-50 hover:bg-red-100"
+          "h-8 w-8 p-0 text-muted-foreground hover:text-red-600 transition-all duration-200",
+          isNegativeActive &&
+            "text-red-600 bg-red-50 hover:bg-red-100 dark:bg-red-950 dark:hover:bg-red-900"
         )}
         title={isNegativeActive ? "Feedback submitted" : "Not helpful"}
       >

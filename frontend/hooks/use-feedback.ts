@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react"
 import { toast } from "sonner"
+import { v4 as uuidv4 } from "uuid"
 
 import { FeedbackService } from "@/lib/feedback-service"
 import type { MessageFeedback, FeedbackRequest } from "@/types"
@@ -29,7 +30,7 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
         if (result.success) {
           const feedback: MessageFeedback = {
             id: result.id,
-            rating: request.rating >= 4 ? "positive" : "negative",
+            rating: (request.rating ?? 0) >= 4 ? "positive" : "negative",
             comment: request.feedback_text,
             created_at: new Date(),
           }
@@ -67,10 +68,11 @@ export function useFeedback(options: UseFeedbackOptions = {}) {
       if (!currentFeedback) return
 
       const request: FeedbackRequest = {
+        chat_history_id: uuidv4(),
+        feedback_type: feedbackData.rating === "positive" ? "thumbs_up" : "thumbs_down",
         rating: feedbackData.rating === "positive" ? 5 : 1,
+        is_liked: feedbackData.rating === "positive",
         feedback_text: feedbackData.comment,
-        is_helpful: feedbackData.rating === "positive",
-        category: feedbackData.rating === "positive" ? "helpful" : "not_helpful",
       }
 
       await submitFeedback(request, currentFeedback.messageId)

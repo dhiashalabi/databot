@@ -1,18 +1,26 @@
 import { NextRequest, NextResponse } from "next/server"
+import type { Session } from "next-auth"
+import { getServerSession } from "next-auth/next"
+
+import { authOptions } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
   try {
+    const session = (await getServerSession(authOptions)) as Session | null
+
+    if (!session?.accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
     const body = await request.json()
 
     const backendUrl = process.env.BACKEND_URL || "http://localhost:8000"
 
-    const response = await fetch(`${backendUrl}/api/ai-feedback/feedback`, {
+    const response = await fetch(`${backendUrl}/api/ai/feedback`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(request.headers.get("authorization") && {
-          authorization: request.headers.get("authorization")!,
-        }),
+        "Authorization": `Bearer ${session.accessToken}`,
       },
       body: JSON.stringify(body),
     })
