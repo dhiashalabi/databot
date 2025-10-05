@@ -4,18 +4,21 @@ from datetime import datetime
 import json
 import logging
 from typing import Any
+from uuid import UUID
 
 from openai import AsyncOpenAI
 
 from src.config import settings
+from src.services.ai_permission_middleware import AIPermissionMiddleware
 
 
 class LLMService:
 	"""Service for handling OpenAI API calls and tool interactions."""
 
-	def __init__(self):
+	def __init__(self, ai_permission_middleware: AIPermissionMiddleware | None = None):
 		"""Initialize the LLM service with OpenAI client."""
 		self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+		self.permission_middleware = ai_permission_middleware
 
 	async def create_chat_completion(
 		self,
@@ -23,6 +26,7 @@ class LLMService:
 		tools: list[dict[str, Any]] | None = None,
 		tool_choice: str = "auto",
 		model: str | None = None,
+		user_id: UUID | None = None,
 	) -> Any:
 		"""Create a chat completion with optional tools.
 
@@ -31,12 +35,24 @@ class LLMService:
 			tools: list of tools to make available
 			tool_choice: how to handle tool calls ("auto", "none", or specific tool)
 			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
+			user_id: UUID of the user making the request (for permission checking)
 
 		Returns:
 			OpenAI chat completion response
 
+		Raises:
+			PermissionError: If user doesn't have permission to use the specified model
+
 		"""
 		selected_model = model or settings.OPENAI_MODEL
+
+		if self.permission_middleware and user_id:
+			if not await self.permission_middleware.check_model_permission(
+				user_id, selected_model, messages
+			):
+				raise PermissionError(
+					f"Permission denied: Cannot use model '{selected_model}'"
+				)
 
 		kwargs = {
 			"model": selected_model,
@@ -55,6 +71,7 @@ class LLMService:
 		mcp_tools: list[dict[str, Any]],
 		mcp_client,
 		model: str | None = None,
+		user_id: UUID | None = None,
 	) -> dict[str, Any]:
 		"""Process a user query with MCP tools.
 
@@ -63,6 +80,7 @@ class LLMService:
 			mcp_tools: List of MCP tools available
 			mcp_client: MCP client instance for tool execution
 			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
+			user_id: UUID of the user making the request (for permission checking)
 
 		Returns:
 			Dictionary with answer, data, and query
@@ -114,6 +132,7 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				tools=openai_tools,
 				tool_choice="auto",
 				model=model,
+				user_id=user_id,
 			)
 		except Exception as e:
 			logger = logging.getLogger(__name__)
@@ -163,6 +182,7 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 			final_response = await self.create_chat_completion(
 				messages=messages,
 				model=model,
+				user_id=user_id,
 			)
 		except Exception as e:
 			logger = logging.getLogger(__name__)
