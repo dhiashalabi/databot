@@ -2,6 +2,7 @@ import { GeistSans } from "geist/font/sans"
 import type { Metadata } from "next"
 
 import { ErrorBoundary } from "@/components/error-boundary"
+import { AuthProvider } from "@/components/providers/session-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { QueryProvider } from "@/lib/query-client"
@@ -20,19 +21,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${GeistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <ErrorBoundary>
-            <QueryProvider>
-              {children}
-              <Toaster />
-            </QueryProvider>
-          </ErrorBoundary>
-        </ThemeProvider>
+        <AuthProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <ErrorBoundary>
+              <QueryProvider>
+                {children}
+                <Toaster />
+              </QueryProvider>
+            </ErrorBoundary>
+          </ThemeProvider>
+        </AuthProvider>
       </body>
     </html>
   )
