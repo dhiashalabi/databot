@@ -1,13 +1,17 @@
 """User model for authentication."""
 
 from datetime import datetime
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import UUID as PostgresUUID
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.database import Base
+
+if TYPE_CHECKING:
+	from src.models.permissions import Role
 
 
 class User(Base):
@@ -35,6 +39,10 @@ class User(Base):
 		server_default="NOW()",
 		onupdate=datetime.utcnow,
 		nullable=False,
+	)
+
+	roles: Mapped[list["Role"]] = relationship(
+		"Role", secondary="user_roles", back_populates="users"
 	)
 
 	def __repr__(self) -> str:
