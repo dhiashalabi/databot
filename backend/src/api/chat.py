@@ -10,6 +10,7 @@ from src.errors.exceptions import DataBotException, ValidationError
 from src.mcp.agent import DataBotAgent
 from src.models.user import User
 from src.schemas.chat import ChatRequest, ChatResponse
+from src.services.permission_service import PermissionService
 
 router = APIRouter()
 
@@ -61,9 +62,28 @@ async def chat_with_ai(
 	error_handler = ErrorHandler()
 
 	try:
+		permission_service = PermissionService(db)
+		if not await permission_service.user_has_permission(current_user.id, "ai.use"):
+			raise HTTPException(
+				status_code=403, detail="You don't have permission to use AI chat"
+			)
+
+		if message.model:
+			if not await permission_service.check_ai_model_permission(
+				current_user.id, message.model
+			):
+				raise HTTPException(
+					status_code=403,
+					detail=f"You don't have permission to use model '{message.model}'",
+				)
+
 		agent = DataBotAgent(db)
-		result = await agent.process_query(message.message, message.model)
+		result = await agent.process_query(
+			message.message, message.model, user_id=current_user.id
+		)
 		return result
+	except HTTPException:
+		raise
 	except DataBotException as e:
 		error_response = error_handler.handle_error(e, {"query": message.message})
 		raise HTTPException(
