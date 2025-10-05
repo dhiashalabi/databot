@@ -32,7 +32,7 @@ function ModelSelectorComponent({
   if (error) {
     return (
       <div className="flex items-center space-x-2">
-        <span className="text-sm text-destructive">Failed to load models</span>
+        <span className="text-sm text-destructive">{error}</span>
       </div>
     )
   }
