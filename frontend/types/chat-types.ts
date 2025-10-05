@@ -8,6 +8,15 @@ export interface Message {
   data?: unknown
   error?: EnhancedError | unknown
   isTyping?: boolean
+  files?: Array<{
+    url: string
+    filename: string
+    type?: string
+    success?: boolean
+    message?: string
+    record_count?: number
+    sheets?: string[]
+  }>
 }
 
 export interface ChatState {
