@@ -1,13 +1,21 @@
 """AI Agent that uses OpenAI with MCP (Model Context Protocol) for enhanced capabilities."""
 
 import logging
+from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors.error_handler import ErrorHandler
-from src.errors.exceptions import MCPError, QueryProcessingError, ValidationError
+from src.errors.exceptions import (
+	MCPError,
+	QueryProcessingError,
+	TokenLimitExceeded,
+	ValidationError,
+)
 from src.llm_service import LLMService
 from src.mcp.mcp_client import mcp_client
+from src.services.ai_permission_middleware import AIPermissionMiddleware
+from src.services.permission_service import PermissionService
 from src.validation.query_validator import QueryValidator
 
 
@@ -17,17 +25,24 @@ class DataBotAgent:
 	def __init__(self, db: AsyncSession):
 		"""Initialize the agent with database session."""
 		self.db = db
-		self.llm_service = LLMService()
+
+		permission_service = PermissionService(db)
+		ai_permission_middleware = AIPermissionMiddleware(permission_service)
+
+		self.llm_service = LLMService(ai_permission_middleware, db)
 		self.mcp_client = mcp_client
 		self.validator = QueryValidator()
 		self.error_handler = ErrorHandler()
 
-	async def process_query(self, user_query: str, model: str | None = None) -> dict:
+	async def process_query(
+		self, user_query: str, model: str | None = None, user_id: UUID | None = None
+	) -> dict:
 		"""Process a natural language query using MCP and OpenAI.
 
 		Args:
 			user_query: Natural language query from the user
 			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
+			user_id: UUID of the user making the request (for permission checking)
 
 		Returns:
 			Dictionary with answer and data
@@ -56,12 +71,15 @@ class DataBotAgent:
 				mcp_tools=mcp_tools,
 				mcp_client=self.mcp_client,
 				model=model,
+				user_id=user_id,
 			)
 
 			return result
 		except ValidationError:
 			raise
 		except MCPError:
+			raise
+		except TokenLimitExceeded:
 			raise
 		except Exception as e:
 			raise QueryProcessingError(

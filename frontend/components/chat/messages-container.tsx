@@ -12,6 +12,7 @@ interface MessagesContainerProps {
   isLoading: boolean
   copiedId: string | null
   onCopy: (text: string, id: string) => void
+  onFeedback?: (messageId: string, rating: "positive" | "negative") => void
 }
 
 export function MessagesContainer({
@@ -19,6 +20,7 @@ export function MessagesContainer({
   isLoading,
   copiedId,
   onCopy,
+  onFeedback,
 }: MessagesContainerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -44,6 +46,8 @@ export function MessagesContainer({
             timestamp={message.timestamp}
             isTyping={message.isTyping}
             files={message.files}
+            feedback={message.feedback}
+            onFeedback={onFeedback}
           />
         ))}
 

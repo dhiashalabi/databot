@@ -8,6 +8,7 @@ import rehypeRaw from "rehype-raw"
 import remarkGfm from "remark-gfm"
 
 import { ErrorDisplay, ValidationErrorDisplay } from "./error-display"
+import { PermissionErrorDisplay } from "./permission-error-display"
 
 import { Button } from "@/components/ui/button"
 import { enhanceError } from "@/lib/error-utils"
@@ -327,6 +328,19 @@ export function MessageContent({
 
   if (error && !isUser) {
     const enhancedError = enhanceError(error)
+
+    const isPermissionError =
+      enhancedError.message?.includes("permission") ||
+      enhancedError.technicalMessage?.includes("permission") ||
+      enhancedError.userMessage?.includes("permission")
+
+    if (isPermissionError) {
+      return (
+        <div className="flex-1 space-y-2 pt-1">
+          <PermissionErrorDisplay error={enhancedError} />
+        </div>
+      )
+    }
 
     if (enhancedError.type === "validation_error" && "validation_errors" in enhancedError) {
       return (

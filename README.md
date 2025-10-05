@@ -7,19 +7,29 @@ A modern AI-powered business data analytics platform that provides natural langu
 - **Natural Language Queries**: Chat with your data using plain English
 - **AI-Powered Analytics**: Leverages OpenAI's GPT models for intelligent data interpretation
 - **MCP Integration**: Uses Model Context Protocol for enhanced AI capabilities
+- **Token Management**: Comprehensive usage tracking, limits, and cost monitoring
+- **AI Feedback System**: User feedback collection with performance analytics
+- **Role-Based Permissions**: Secure multi-user access with granular permission control
 - **Modern UI**: Built with Next.js 15, React 19, and Tailwind CSS
 - **Real-time Chat Interface**: Interactive chat experience with message history
-- **Multi-Model Support**: Choose between different AI models
+- **Multi-Model Support**: Choose between different AI models with usage limits
 - **PostgreSQL Database**: Robust data storage with async support
 - **Docker Ready**: Containerized for easy deployment
 
+## ✅ Implemented Features
+
+- [x] **Token Management**: Comprehensive token usage tracking, limits, and cost management for OpenAI API calls
+- [x] **AI Feedback System**: User feedback collection with ratings, chat history, and performance analytics
+- [x] **Permissions**: Role-based access control and user management for secure multi-user environments
+- [x] **User AI Control**: Enable/disable AI access per user with granular permission management
+- [x] **Usage Analytics**: Detailed analytics for token usage, model performance, and user satisfaction
+- [x] **File Generation**: Export query results as PDF, Excel, and CSV files for easy sharing and reporting
+- [x] **Charts and Graphs**: Interactive visualizations and data charts to better understand your business metrics
+
 ## Coming Soon
 
-- [ ] **File Generation**: Export query results as PDF, Excel, and CSV files for easy sharing and reporting
-- [ ] **Charts and Graphs**: Interactive visualizations and data charts to better understand your business metrics
 - [ ] **Monitoring**: Real-time system monitoring and performance analytics for optimal data processing
-- [ ] **Permissions**: Role-based access control and user management for secure multi-user environments
-- [ ] **Token Usage and Restrictions**: Usage tracking, rate limiting, and cost management for OpenAI API calls
+- [ ] **Advanced Dashboards**: Enhanced admin dashboards for usage monitoring and system management
 
 ## Architecture
 

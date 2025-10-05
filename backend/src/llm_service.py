@@ -3,19 +3,33 @@
 from datetime import datetime
 import json
 import logging
+import time
 from typing import Any
+from uuid import UUID
 
 from openai import AsyncOpenAI
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
+from src.errors.exceptions import TokenLimitExceeded
+from src.services.ai_permission_middleware import AIPermissionMiddleware
+from src.services.token_management_service import TokenManagementService
 
 
 class LLMService:
 	"""Service for handling OpenAI API calls and tool interactions."""
 
-	def __init__(self):
+	def __init__(
+		self,
+		ai_permission_middleware: AIPermissionMiddleware | None = None,
+		db_session: AsyncSession | None = None,
+	):
 		"""Initialize the LLM service with OpenAI client."""
 		self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
+		self.permission_middleware = ai_permission_middleware
+		self.db_session = db_session
+		self.token_service = TokenManagementService(db_session) if db_session else None
+		self.logger = logging.getLogger(__name__)
 
 	async def create_chat_completion(
 		self,
@@ -23,6 +37,9 @@ class LLMService:
 		tools: list[dict[str, Any]] | None = None,
 		tool_choice: str = "auto",
 		model: str | None = None,
+		user_id: UUID | None = None,
+		track_usage: bool = True,
+		user_query: str | None = None,
 	) -> Any:
 		"""Create a chat completion with optional tools.
 
@@ -31,12 +48,48 @@ class LLMService:
 			tools: list of tools to make available
 			tool_choice: how to handle tool calls ("auto", "none", or specific tool)
 			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
+			user_id: UUID of the user making the request (for permission checking)
+			track_usage: Whether to track token usage
+			user_query: The original user query for logging
 
 		Returns:
 			OpenAI chat completion response
 
+		Raises:
+			PermissionError: If user doesn't have permission to use the specified model
+
 		"""
 		selected_model = model or settings.OPENAI_MODEL
+		start_time = time.time()
+
+		if self.token_service and user_id:
+			if not await self.token_service.check_user_ai_enabled(user_id):
+				raise PermissionError("AI is disabled for this user")
+
+		if self.permission_middleware and user_id:
+			if not await self.permission_middleware.check_model_permission(
+				user_id, selected_model, messages
+			):
+				raise PermissionError(
+					f"Permission denied: Cannot use model '{selected_model}'"
+				)
+
+		if self.token_service and user_id and track_usage:
+			estimated_input_tokens = (
+				sum(len(str(msg.get("content", ""))) for msg in messages) // 4
+			)
+
+			limits_check = await self.token_service.check_token_limits(
+				user_id, selected_model, estimated_input_tokens
+			)
+
+			if not limits_check["allowed"]:
+				raise TokenLimitExceeded(
+					message=limits_check["reason"],
+					limit_type=limits_check.get("exceeded_periods", ["unknown"])[0]
+					if limits_check.get("exceeded_periods")
+					else "unknown",
+				)
 
 		kwargs = {
 			"model": selected_model,
@@ -47,7 +100,47 @@ class LLMService:
 			kwargs["tools"] = tools
 			kwargs["tool_choice"] = tool_choice
 
-		return await self.client.chat.completions.create(**kwargs)
+		try:
+			response = await self.client.chat.completions.create(**kwargs)
+
+			if self.token_service and user_id and track_usage:
+				response_time_ms = int((time.time() - start_time) * 1000)
+
+				usage = response.usage
+				if usage:
+					await self.token_service.record_token_usage(
+						user_id=user_id,
+						model_name=selected_model,
+						input_tokens=usage.prompt_tokens,
+						output_tokens=usage.completion_tokens,
+						request_type="chat",
+						user_query=user_query,
+						response_summary=response.choices[0].message.content[:500]
+						if response.choices and len(response.choices) > 0 and response.choices[0].message.content
+						else None,
+						response_time_ms=response_time_ms,
+						success=True,
+					)
+
+			return response
+
+		except Exception as e:
+			if self.token_service and user_id and track_usage:
+				response_time_ms = int((time.time() - start_time) * 1000)
+
+				await self.token_service.record_token_usage(
+					user_id=user_id,
+					model_name=selected_model,
+					input_tokens=0,
+					output_tokens=0,
+					request_type="chat",
+					user_query=user_query,
+					response_time_ms=response_time_ms,
+					success=False,
+					error_message=str(e),
+				)
+
+			raise
 
 	async def process_with_tools(
 		self,
@@ -55,6 +148,8 @@ class LLMService:
 		mcp_tools: list[dict[str, Any]],
 		mcp_client,
 		model: str | None = None,
+		user_id: UUID | None = None,
+		session_id: str | None = None,
 	) -> dict[str, Any]:
 		"""Process a user query with MCP tools.
 
@@ -63,6 +158,8 @@ class LLMService:
 			mcp_tools: List of MCP tools available
 			mcp_client: MCP client instance for tool execution
 			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
+			user_id: UUID of the user making the request (for permission and tracking)
+			session_id: Optional session ID for conversation tracking
 
 		Returns:
 			Dictionary with answer, data, and query
@@ -108,13 +205,24 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 			{"role": "user", "content": user_query},
 		]
 
+		total_input_tokens = 0
+		total_output_tokens = 0
+
 		try:
 			response = await self.create_chat_completion(
 				messages=messages,
 				tools=openai_tools,
 				tool_choice="auto",
 				model=model,
+				user_id=user_id,
+				user_query=user_query,
 			)
+
+			if response.usage:
+				total_input_tokens += response.usage.prompt_tokens
+				total_output_tokens += response.usage.completion_tokens
+		except TokenLimitExceeded:
+			raise
 		except Exception as e:
 			logger = logging.getLogger(__name__)
 			logger.error(f"Failed to create chat completion: {e}")
@@ -123,6 +231,16 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				"data": None,
 				"query": user_query,
 				"error": "OpenAI API unavailable",
+			}
+
+		if not response.choices or len(response.choices) == 0:
+			logger = logging.getLogger(__name__)
+			logger.error("No choices returned from OpenAI API")
+			return {
+				"answer": "I'm experiencing technical difficulties. Please try again in a moment.",
+				"data": None,
+				"query": user_query,
+				"error": "No response choices available",
 			}
 
 		message = response.choices[0].message
@@ -136,7 +254,21 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				"query": user_query,
 			}
 
-		messages.append(message)
+		messages.append({
+			"role": message.role,
+			"content": message.content,
+			"tool_calls": [
+				{
+					"id": tool_call.id,
+					"type": tool_call.type,
+					"function": {
+						"name": tool_call.function.name,
+						"arguments": tool_call.function.arguments,
+					},
+				}
+				for tool_call in message.tool_calls
+			] if message.tool_calls else None,
+		})
 		tool_results = []
 
 		for tool_call in tool_calls:
@@ -163,7 +295,15 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 			final_response = await self.create_chat_completion(
 				messages=messages,
 				model=model,
+				user_id=user_id,
+				user_query=user_query,
 			)
+
+			if final_response.usage:
+				total_input_tokens += final_response.usage.prompt_tokens
+				total_output_tokens += final_response.usage.completion_tokens
+		except TokenLimitExceeded:
+			raise
 		except Exception as e:
 			logger = logging.getLogger(__name__)
 			logger.error(f"Failed to generate final response: {e}")
@@ -181,8 +321,20 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 
 		files = self._extract_file_info(tool_results)
 
+		if not final_response.choices or len(final_response.choices) == 0:
+			logger = logging.getLogger(__name__)
+			logger.error("No choices returned from final OpenAI API response")
+			return {
+				"answer": "I've gathered the data you requested, but I'm having trouble generating a complete analysis. Here's what I found:",
+				"data": tool_results[0] if len(tool_results) == 1 else tool_results,
+				"query": user_query,
+				"error": "No final response choices available",
+			}
+
+		ai_response = final_response.choices[0].message.content
+
 		response = {
-			"answer": final_response.choices[0].message.content,
+			"answer": ai_response,
 			"data": data,
 			"query": user_query,
 		}
@@ -191,37 +343,6 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 			response["files"] = files
 
 		return response
-
-	async def simple_chat_completion(
-		self,
-		user_query: str,
-		system_message: str | None = None,
-		model: str | None = None,
-	) -> str:
-		"""Create a simple chat completion without tools.
-
-		Args:
-			user_query: The user's query
-			system_message: system message
-			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
-
-		Returns:
-			The assistant's response content
-
-		"""
-		messages = []
-
-		if system_message:
-			messages.append({"role": "system", "content": system_message})
-
-		messages.append({"role": "user", "content": user_query})
-
-		response = await self.create_chat_completion(
-			messages=messages,
-			model=model,
-		)
-
-		return response.choices[0].message.content or "I couldn't process your query."
 
 	def _extract_file_info(
 		self, tool_results: list[dict[str, Any]]

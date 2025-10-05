@@ -3,9 +3,11 @@
 import json
 import logging
 from typing import Any
+from uuid import UUID
 
 from mcp.types import ListToolsResult, TextContent
 
+from src.mcp.middleware.permission_middleware import MCPPermissionMiddleware
 from src.mcp.registry import ToolRegistry
 
 logger = logging.getLogger(__name__)
@@ -14,15 +16,25 @@ logger = logging.getLogger(__name__)
 class ToolHandler:
 	"""Handler for MCP tool operations."""
 
-	def __init__(self, tool_registry: ToolRegistry, data_sanitizer=None):
+	def __init__(
+		self,
+		tool_registry: ToolRegistry,
+		data_sanitizer=None,
+		permission_middleware: MCPPermissionMiddleware | None = None,
+	):
 		"""Initialize the tool handler."""
 		self.tool_registry = tool_registry
 		self.data_sanitizer = data_sanitizer
+		self.permission_middleware = permission_middleware
 
 	async def list_tools(
-		self, group: str = None, category: str = None, namespace: str = None
+		self,
+		group: str | None = None,
+		category: str | None = None,
+		namespace: str | None = None,
+		user_id: UUID | None = None,
 	) -> ListToolsResult:
-		"""List available tools with optional filtering."""
+		"""List available tools with optional filtering and permission checking."""
 		try:
 			if group or category or namespace:
 				tools = self.tool_registry.get_tools_filtered(
@@ -30,6 +42,16 @@ class ToolHandler:
 				)
 			else:
 				tools = self.tool_registry.get_all_tools()
+
+			if self.permission_middleware and user_id:
+				all_tool_names = [tool.name for tool in tools]
+				accessible_tool_names = (
+					await self.permission_middleware.filter_available_tools(
+						user_id, all_tool_names
+					)
+				)
+				tools = [tool for tool in tools if tool.name in accessible_tool_names]
+
 			return ListToolsResult(tools=tools)
 		except Exception as e:
 			logger.error(f"Error listing tools: {e}")
@@ -97,10 +119,25 @@ class ToolHandler:
 			return {}
 
 	async def call_tool(
-		self, name: str, arguments: dict[str, Any]
+		self, name: str, arguments: dict[str, Any], user_id: UUID | None = None
 	) -> list[TextContent]:
-		"""Call a tool with the given arguments."""
+		"""Call a tool with the given arguments, with permission checking."""
 		try:
+			if self.permission_middleware and user_id:
+				if not await self.permission_middleware.check_tool_permission(
+					user_id, name, arguments
+				):
+					error_response = (
+						self.permission_middleware.create_permission_error_response(
+							name, user_id
+						)
+					)
+					return [
+						TextContent(
+							type="text", text=json.dumps(error_response, indent=2)
+						)
+					]
+
 			result = await self.tool_registry.execute_tool(name, arguments)
 
 			if self.data_sanitizer:

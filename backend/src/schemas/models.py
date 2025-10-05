@@ -16,4 +16,4 @@ class ModelsResponse(BaseModel):
 	"""Response model for available OpenAI models."""
 
 	models: list[ModelInfo]
-	default_model: str
+	default_model: str | None

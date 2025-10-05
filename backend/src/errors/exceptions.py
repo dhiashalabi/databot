@@ -65,3 +65,19 @@ class OperationTimeoutError(DataBotException):
 	def __init__(self, message: str, timeout_seconds: int = None):
 		super().__init__(message, "TIMEOUT_ERROR")
 		self.timeout_seconds = timeout_seconds
+
+
+class TokenLimitExceeded(DataBotException):
+	"""Raised when user exceeds token limits."""
+
+	def __init__(
+		self,
+		message: str,
+		limit_type: str = None,
+		current_usage: int = None,
+		limit: int = None,
+	):
+		super().__init__(message, "TOKEN_LIMIT_EXCEEDED")
+		self.limit_type = limit_type
+		self.current_usage = current_usage
+		self.limit = limit
