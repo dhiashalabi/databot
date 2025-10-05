@@ -4,15 +4,16 @@ DROP TABLE IF EXISTS sale CASCADE;
 DROP TABLE IF EXISTS product CASCADE;
 DROP TABLE IF EXISTS category CASCADE;
 DROP TABLE IF EXISTS customer CASCADE;
-DROP TABLE IF EXISTS "user" CASCADE;
+DROP TABLE IF EXISTS user CASCADE;
 
-CREATE TABLE "user" (
+CREATE TABLE user (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     username VARCHAR(50) UNIQUE NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     hashed_password TEXT NOT NULL,
     is_active BOOLEAN DEFAULT TRUE,
     is_admin BOOLEAN DEFAULT FALSE,
+    ai_enabled BOOLEAN DEFAULT TRUE NOT NULL,
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
@@ -565,3 +566,195 @@ INSERT INTO tool_permissions (tool_name, permission_code) VALUES
 ('analytics_dashboard', 'mcp.analytics.view'),
 ('create_chart', 'mcp.charts.create'),
 ('export_data', 'mcp.analytics.view');
+
+CREATE TABLE model_token_limits (
+    id SERIAL PRIMARY KEY,
+    model_name VARCHAR(100) UNIQUE NOT NULL,
+    daily_token_limit INTEGER,
+    weekly_token_limit INTEGER,
+    monthly_token_limit INTEGER,
+    input_cost_per_1k_tokens DECIMAL(10, 6),
+    output_cost_per_1k_tokens DECIMAL(10, 6),
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+CREATE TABLE token_usage (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    model_name VARCHAR(100) NOT NULL,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    total_tokens INTEGER NOT NULL DEFAULT 0,
+    input_cost DECIMAL(10, 6),
+    output_cost DECIMAL(10, 6),
+    total_cost DECIMAL(10, 6),
+    request_type VARCHAR(50) NOT NULL DEFAULT 'chat',
+    user_query TEXT,
+    response_summary TEXT,
+    response_time_ms INTEGER,
+    success BOOLEAN DEFAULT TRUE NOT NULL,
+    error_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    CONSTRAINT check_total_tokens CHECK (total_tokens = input_tokens + output_tokens)
+);
+
+CREATE TABLE user_token_quotas (
+    id SERIAL PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    model_name VARCHAR(100) NOT NULL,
+    daily_token_limit INTEGER,
+    weekly_token_limit INTEGER,
+    monthly_token_limit INTEGER,
+    daily_usage INTEGER DEFAULT 0 NOT NULL,
+    weekly_usage INTEGER DEFAULT 0 NOT NULL,
+    monthly_usage INTEGER DEFAULT 0 NOT NULL,
+    daily_reset_date DATE,
+    weekly_reset_date DATE,
+    monthly_reset_date DATE,
+    is_active BOOLEAN DEFAULT TRUE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    UNIQUE(user_id, model_name)
+);
+
+CREATE TABLE chat_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    user_query TEXT NOT NULL,
+    model_used VARCHAR(100) NOT NULL,
+    ai_response TEXT,
+    response_time_ms INTEGER,
+    input_tokens INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    total_tokens INTEGER NOT NULL DEFAULT 0,
+    request_type VARCHAR(50) NOT NULL DEFAULT 'chat',
+    tools_used TEXT,
+    success BOOLEAN DEFAULT TRUE NOT NULL,
+    error_message TEXT,
+    session_id VARCHAR(100),
+    conversation_context TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+);
+
+CREATE TABLE ai_feedback (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES "user"(id) ON DELETE CASCADE,
+    chat_history_id UUID NOT NULL REFERENCES chat_history(id) ON DELETE CASCADE,
+    feedback_type VARCHAR(20) NOT NULL CHECK (feedback_type IN ('thumbs_up', 'thumbs_down', 'rating', 'detailed')),
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    is_liked BOOLEAN,
+    feedback_text TEXT,
+    helpfulness_rating INTEGER CHECK (helpfulness_rating >= 1 AND helpfulness_rating <= 5),
+    accuracy_rating INTEGER CHECK (accuracy_rating >= 1 AND accuracy_rating <= 5),
+    relevance_rating INTEGER CHECK (relevance_rating >= 1 AND relevance_rating <= 5),
+    suggested_improvements TEXT,
+    reported_issues TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
+    UNIQUE(user_id, chat_history_id)
+);
+
+CREATE INDEX idx_token_usage_user_date ON token_usage(user_id, created_at);
+CREATE INDEX idx_token_usage_model_date ON token_usage(model_name, created_at);
+CREATE INDEX idx_token_usage_user_model ON token_usage(user_id, model_name);
+
+CREATE INDEX idx_user_token_quota_user ON user_token_quotas(user_id);
+
+CREATE INDEX idx_chat_history_user_date ON chat_history(user_id, created_at);
+CREATE INDEX idx_chat_history_model ON chat_history(model_used);
+CREATE INDEX idx_chat_history_session ON chat_history(session_id);
+CREATE INDEX idx_chat_history_success ON chat_history(success);
+
+CREATE INDEX idx_ai_feedback_user ON ai_feedback(user_id);
+CREATE INDEX idx_ai_feedback_chat ON ai_feedback(chat_history_id);
+CREATE INDEX idx_ai_feedback_type ON ai_feedback(feedback_type);
+CREATE INDEX idx_ai_feedback_rating ON ai_feedback(rating);
+CREATE INDEX idx_ai_feedback_liked ON ai_feedback(is_liked);
+
+INSERT INTO model_token_limits (model_name, daily_token_limit, weekly_token_limit, monthly_token_limit, input_cost_per_1k_tokens, output_cost_per_1k_tokens) VALUES
+('gpt-4o', 100000, 500000, 2000000, 0.0025, 0.01),
+('gpt-4o-mini', 200000, 1000000, 4000000, 0.00015, 0.0006),
+('gpt-3.5-turbo', 150000, 750000, 3000000, 0.0005, 0.0015),
+('gpt-4-turbo', 80000, 400000, 1600000, 0.01, 0.03),
+('gpt-4', 50000, 250000, 1000000, 0.03, 0.06);
+
+INSERT INTO permissions (code, description, category) VALUES
+('ai.feedback.submit', 'Submit feedback for AI responses', 'AI'),
+('ai.feedback.view', 'View AI feedback and chat history', 'AI'),
+('ai.chat.history', 'Access chat history', 'AI'),
+('ai.models.performance', 'View AI model performance metrics', 'AI');
+
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p 
+WHERE r.name = 'analyst' AND p.code IN ('ai.feedback.submit', 'ai.feedback.view', 'ai.chat.history');
+
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p 
+WHERE r.name = 'manager' AND p.code IN ('ai.feedback.submit', 'ai.feedback.view', 'ai.chat.history', 'ai.models.performance');
+
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p 
+WHERE r.name = 'admin' AND p.code IN ('ai.feedback.submit', 'ai.feedback.view', 'ai.chat.history', 'ai.models.performance');
+
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p 
+WHERE r.name = 'viewer' AND p.code = 'ai.feedback.submit';
+
+INSERT INTO role_permissions (role_id, permission_id) 
+SELECT r.id, p.id FROM roles r, permissions p 
+WHERE r.name = 'developer' AND p.code IN ('ai.feedback.submit', 'ai.feedback.view', 'ai.chat.history', 'ai.models.performance');
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_model_token_limits_updated_at 
+    BEFORE UPDATE ON model_token_limits 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_token_quotas_updated_at 
+    BEFORE UPDATE ON user_token_quotas 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_ai_feedback_updated_at 
+    BEFORE UPDATE ON ai_feedback 
+    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+CREATE OR REPLACE VIEW token_usage_summary AS
+SELECT 
+    user_id,
+    model_name,
+    DATE_TRUNC('day', created_at) as usage_date,
+    COUNT(*) as request_count,
+    SUM(total_tokens) as total_tokens,
+    SUM(input_tokens) as total_input_tokens,
+    SUM(output_tokens) as total_output_tokens,
+    SUM(total_cost) as total_cost,
+    AVG(response_time_ms) as avg_response_time,
+    SUM(CASE WHEN success THEN 1 ELSE 0 END) as successful_requests
+FROM token_usage
+GROUP BY user_id, model_name, DATE_TRUNC('day', created_at)
+ORDER BY usage_date DESC, user_id, model_name;
+
+CREATE OR REPLACE VIEW ai_feedback_summary AS
+SELECT 
+    model_used,
+    DATE_TRUNC('day', ch.created_at) as feedback_date,
+    COUNT(af.id) as feedback_count,
+    COUNT(CASE WHEN af.is_liked = TRUE THEN 1 END) as liked_count,
+    COUNT(CASE WHEN af.is_liked = FALSE THEN 1 END) as disliked_count,
+    AVG(af.rating) as avg_rating,
+    AVG(af.helpfulness_rating) as avg_helpfulness,
+    AVG(af.accuracy_rating) as avg_accuracy,
+    AVG(af.relevance_rating) as avg_relevance
+FROM chat_history ch
+LEFT JOIN ai_feedback af ON ch.id = af.chat_history_id
+WHERE af.id IS NOT NULL
+GROUP BY model_used, DATE_TRUNC('day', ch.created_at)
+ORDER BY feedback_date DESC, model_used;
