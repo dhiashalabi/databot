@@ -30,7 +30,16 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       return NextResponse.json(
         {
-          error: data.detail || data.error || `Backend error: ${response.statusText}`,
+          error: {
+            answer: "",
+            data: null,
+            query: "",
+            error: {
+              type: "backend_error",
+              message: data.detail || data.error || `Backend error: ${response.statusText}`,
+              code: response.status === 401 ? "AUTH_ERROR" : "BACKEND_ERROR",
+            },
+          },
         },
         { status: response.status }
       )
@@ -47,7 +56,16 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       {
-        error: errorMessage,
+        error: {
+          answer: "",
+          data: null,
+          query: "",
+          error: {
+            type: "backend_error",
+            message: errorMessage,
+            code: "NETWORK_ERROR",
+          },
+        },
       },
       { status: 500 }
     )

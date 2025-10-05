@@ -158,8 +158,8 @@ function determineValidationSeverity(validationErrors: string[]): ErrorSeverity 
 function determineBackendSeverity(code?: string): ErrorSeverity {
   if (!code) return "medium"
 
-  const criticalCodes = ["INTERNAL_ERROR", "DATABASE_ERROR", "AUTH_ERROR"]
-  const highCodes = ["VALIDATION_ERROR", "RATE_LIMIT", "TIMEOUT"]
+  const criticalCodes = ["INTERNAL_ERROR", "DATABASE_ERROR"]
+  const highCodes = ["AUTH_ERROR", "VALIDATION_ERROR", "RATE_LIMIT", "TIMEOUT"]
   const lowCodes = ["NOT_FOUND", "INVALID_INPUT"]
 
   if (criticalCodes.includes(code)) return "critical"
@@ -195,6 +195,8 @@ function formatBackendUserMessage(error: AppError & { code?: string }): string {
   const code = error.code || "UNKNOWN_ERROR"
 
   switch (code) {
+    case "AUTH_ERROR":
+      return "Authentication failed. Please sign in again."
     case "INVALID_API_KEY":
       return "There's an issue with the API configuration. Please contact support."
     case "RATE_LIMIT":
@@ -243,6 +245,10 @@ function formatNetworkUserMessage(
  * Format string error for user display
  */
 function formatStringError(error: string): string {
+  if (error.includes("Could not validate credentials") || error.includes("invalid credentials")) {
+    return "Authentication failed. Please sign in again."
+  }
+
   if (error.includes("invalid_api_key") || error.includes("Incorrect API key")) {
     return "Invalid API key. Please check your backend configuration."
   }
@@ -302,6 +308,10 @@ function getValidationSuggestions(validationErrors: string[]): string[] {
  */
 function getBackendSuggestions(code?: string): string[] {
   switch (code) {
+    case "AUTH_ERROR":
+      return ["Please sign in again", "Try again with a different account"]
+    case "VALIDATION_ERROR":
+      return ["Please rephrase your question", "Try again with a different question"]
     case "RATE_LIMIT":
       return ["Wait a few seconds before trying again", "Try asking a simpler question"]
     case "TIMEOUT":
