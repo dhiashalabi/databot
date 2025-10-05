@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from src.auth.dependencies import get_current_active_user
 from src.database import get_db
 from src.errors.error_handler import ErrorHandler
-from src.errors.exceptions import DataBotException, ValidationError
+from src.errors.exceptions import DataBotException, TokenLimitExceeded, ValidationError
 from src.mcp.agent import DataBotAgent
 from src.models.user import User
 from src.schemas.chat import ChatRequest, ChatResponse
@@ -84,6 +84,13 @@ async def chat_with_ai(
 		return result
 	except HTTPException:
 		raise
+	except TokenLimitExceeded as e:
+		return ChatResponse(
+			answer=f"Token limit exceeded: {e.message}",
+			data=None,
+			query=message.message,
+			files=None,
+		)
 	except DataBotException as e:
 		error_response = error_handler.handle_error(e, {"query": message.message})
 		raise HTTPException(

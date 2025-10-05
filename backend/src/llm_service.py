@@ -3,22 +3,34 @@
 from datetime import datetime
 import json
 import logging
+import time
+import traceback
 from typing import Any
 from uuid import UUID
 
 from openai import AsyncOpenAI
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.config import settings
+from src.errors.exceptions import TokenLimitExceeded
 from src.services.ai_permission_middleware import AIPermissionMiddleware
+from src.services.token_management_service import TokenManagementService
 
 
 class LLMService:
 	"""Service for handling OpenAI API calls and tool interactions."""
 
-	def __init__(self, ai_permission_middleware: AIPermissionMiddleware | None = None):
+	def __init__(
+		self,
+		ai_permission_middleware: AIPermissionMiddleware | None = None,
+		db_session: AsyncSession | None = None,
+	):
 		"""Initialize the LLM service with OpenAI client."""
 		self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 		self.permission_middleware = ai_permission_middleware
+		self.db_session = db_session
+		self.token_service = TokenManagementService(db_session) if db_session else None
+		self.logger = logging.getLogger(__name__)
 
 	async def create_chat_completion(
 		self,
@@ -27,6 +39,8 @@ class LLMService:
 		tool_choice: str = "auto",
 		model: str | None = None,
 		user_id: UUID | None = None,
+		track_usage: bool = True,
+		user_query: str | None = None,
 	) -> Any:
 		"""Create a chat completion with optional tools.
 
@@ -36,6 +50,8 @@ class LLMService:
 			tool_choice: how to handle tool calls ("auto", "none", or specific tool)
 			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
 			user_id: UUID of the user making the request (for permission checking)
+			track_usage: Whether to track token usage
+			user_query: The original user query for logging
 
 		Returns:
 			OpenAI chat completion response
@@ -45,6 +61,11 @@ class LLMService:
 
 		"""
 		selected_model = model or settings.OPENAI_MODEL
+		start_time = time.time()
+
+		if self.token_service and user_id:
+			if not await self.token_service.check_user_ai_enabled(user_id):
+				raise PermissionError("AI is disabled for this user")
 
 		if self.permission_middleware and user_id:
 			if not await self.permission_middleware.check_model_permission(
@@ -52,6 +73,23 @@ class LLMService:
 			):
 				raise PermissionError(
 					f"Permission denied: Cannot use model '{selected_model}'"
+				)
+
+		if self.token_service and user_id and track_usage:
+			estimated_input_tokens = (
+				sum(len(str(msg.get("content", ""))) for msg in messages) // 4
+			)
+
+			limits_check = await self.token_service.check_token_limits(
+				user_id, selected_model, estimated_input_tokens
+			)
+
+			if not limits_check["allowed"]:
+				raise TokenLimitExceeded(
+					message=limits_check["reason"],
+					limit_type=limits_check.get("exceeded_periods", ["unknown"])[0]
+					if limits_check.get("exceeded_periods")
+					else "unknown",
 				)
 
 		kwargs = {
@@ -63,7 +101,97 @@ class LLMService:
 			kwargs["tools"] = tools
 			kwargs["tool_choice"] = tool_choice
 
-		return await self.client.chat.completions.create(**kwargs)
+		try:
+			response = await self.client.chat.completions.create(**kwargs)
+
+			if self.token_service and user_id and track_usage:
+				response_time_ms = int((time.time() - start_time) * 1000)
+
+				usage = response.usage
+				if usage:
+					await self.token_service.record_token_usage(
+						user_id=user_id,
+						model_name=selected_model,
+						input_tokens=usage.prompt_tokens,
+						output_tokens=usage.completion_tokens,
+						request_type="chat",
+						user_query=user_query,
+						response_summary=response.choices[0].message.content[:500]
+						if response.choices
+						else None,
+						response_time_ms=response_time_ms,
+						success=True,
+					)
+
+					if user_query:
+						try:
+							ai_response = (
+								response.choices[0].message.content
+								if response.choices
+								else None
+							)
+							chat_history = await self.token_service.create_chat_history(
+								user_id=user_id,
+								user_query=user_query,
+								model_used=selected_model,
+								ai_response=ai_response,
+								response_time_ms=response_time_ms,
+								input_tokens=usage.prompt_tokens,
+								output_tokens=usage.completion_tokens,
+								request_type="chat",
+								success=True,
+							)
+							self.logger.info(
+								f"Successfully created chat history with ID: {chat_history.id}"
+							)
+						except Exception as e:
+							self.logger.error(
+								f"Failed to create chat history in create_chat_completion: {e}"
+							)
+							self.logger.error(
+								f"Chat history creation traceback: {traceback.format_exc()}"
+							)
+
+			return response
+
+		except Exception as e:
+			if self.token_service and user_id and track_usage:
+				response_time_ms = int((time.time() - start_time) * 1000)
+
+				await self.token_service.record_token_usage(
+					user_id=user_id,
+					model_name=selected_model,
+					input_tokens=0,
+					output_tokens=0,
+					request_type="chat",
+					user_query=user_query,
+					response_time_ms=response_time_ms,
+					success=False,
+					error_message=str(e),
+				)
+
+				if user_query:
+					try:
+						chat_history = await self.token_service.create_chat_history(
+							user_id=user_id,
+							user_query=user_query,
+							model_used=selected_model,
+							ai_response=None,
+							response_time_ms=response_time_ms,
+							input_tokens=0,
+							output_tokens=0,
+							request_type="chat",
+							success=False,
+							error_message=str(e),
+						)
+						self.logger.info(
+							f"Created chat history for failed request with ID: {chat_history.id}"
+						)
+					except Exception as chat_error:
+						self.logger.error(
+							f"Failed to create chat history for failed request: {chat_error}"
+						)
+			raise
 
 	async def process_with_tools(
 		self,
@@ -72,6 +200,7 @@ class LLMService:
 		mcp_client,
 		model: str | None = None,
 		user_id: UUID | None = None,
+		session_id: str | None = None,
 	) -> dict[str, Any]:
 		"""Process a user query with MCP tools.
 
@@ -80,7 +209,8 @@ class LLMService:
 			mcp_tools: List of MCP tools available
 			mcp_client: MCP client instance for tool execution
 			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
-			user_id: UUID of the user making the request (for permission checking)
+			user_id: UUID of the user making the request (for permission and tracking)
+			session_id: Optional session ID for conversation tracking
 
 		Returns:
 			Dictionary with answer, data, and query
@@ -126,6 +256,11 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 			{"role": "user", "content": user_query},
 		]
 
+		start_time = time.time()
+		selected_model = model or settings.OPENAI_MODEL
+		total_input_tokens = 0
+		total_output_tokens = 0
+
 		try:
 			response = await self.create_chat_completion(
 				messages=messages,
@@ -133,7 +268,14 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				tool_choice="auto",
 				model=model,
 				user_id=user_id,
+				user_query=user_query,
 			)
+
+			if response.usage:
+				total_input_tokens += response.usage.prompt_tokens
+				total_output_tokens += response.usage.completion_tokens
+		except TokenLimitExceeded:
+			raise
 		except Exception as e:
 			logger = logging.getLogger(__name__)
 			logger.error(f"Failed to create chat completion: {e}")
@@ -183,7 +325,14 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				messages=messages,
 				model=model,
 				user_id=user_id,
+				user_query=user_query,
 			)
+
+			if final_response.usage:
+				total_input_tokens += final_response.usage.prompt_tokens
+				total_output_tokens += final_response.usage.completion_tokens
+		except TokenLimitExceeded:
+			raise
 		except Exception as e:
 			logger = logging.getLogger(__name__)
 			logger.error(f"Failed to generate final response: {e}")
@@ -201,8 +350,44 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 
 		files = self._extract_file_info(tool_results)
 
+		ai_response = final_response.choices[0].message.content
+		response_time_ms = int((time.time() - start_time) * 1000)
+
+		if self.token_service and user_id:
+			try:
+				tools_used = (
+					[tool_info["name"] for tool_info in mcp_tools]
+					if mcp_tools
+					else None
+				)
+				chat_history = await self.token_service.create_chat_history(
+					user_id=user_id,
+					user_query=user_query,
+					model_used=selected_model,
+					ai_response=ai_response,
+					response_time_ms=response_time_ms,
+					input_tokens=total_input_tokens,
+					output_tokens=total_output_tokens,
+					request_type="mcp_tools",
+					tools_used=json.dumps(tools_used) if tools_used else None,
+					success=True,
+					session_id=session_id,
+					conversation_context=json.dumps(
+						{"tool_results_count": len(tool_results)}
+					),
+				)
+				self.logger.info(
+					f"Successfully created chat history with ID: {chat_history.id}"
+				)
+			except Exception as e:
+				self.logger.error(f"Failed to create chat history: {e}")
+
+				self.logger.error(
+					f"Chat history creation traceback: {traceback.format_exc()}"
+				)
+
 		response = {
-			"answer": final_response.choices[0].message.content,
+			"answer": ai_response,
 			"data": data,
 			"query": user_query,
 		}

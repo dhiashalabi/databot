@@ -6,7 +6,12 @@ from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from src.errors.error_handler import ErrorHandler
-from src.errors.exceptions import MCPError, QueryProcessingError, ValidationError
+from src.errors.exceptions import (
+	MCPError,
+	QueryProcessingError,
+	TokenLimitExceeded,
+	ValidationError,
+)
 from src.llm_service import LLMService
 from src.mcp.mcp_client import mcp_client
 from src.services.ai_permission_middleware import AIPermissionMiddleware
@@ -24,7 +29,7 @@ class DataBotAgent:
 		permission_service = PermissionService(db)
 		ai_permission_middleware = AIPermissionMiddleware(permission_service)
 
-		self.llm_service = LLMService(ai_permission_middleware)
+		self.llm_service = LLMService(ai_permission_middleware, db)
 		self.mcp_client = mcp_client
 		self.validator = QueryValidator()
 		self.error_handler = ErrorHandler()
@@ -73,6 +78,8 @@ class DataBotAgent:
 		except ValidationError:
 			raise
 		except MCPError:
+			raise
+		except TokenLimitExceeded:
 			raise
 		except Exception as e:
 			raise QueryProcessingError(
