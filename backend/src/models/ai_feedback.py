@@ -109,7 +109,7 @@ class AIFeedback(Base):
 		nullable=False,
 	)
 
-	feedback_type: Mapped[FeedbackType] = mapped_column(nullable=False)
+	feedback_type: Mapped[str] = mapped_column(String(20), nullable=False)
 	rating: Mapped[int] = mapped_column(Integer, nullable=True)
 	is_liked: Mapped[bool] = mapped_column(Boolean, nullable=True)
 	feedback_text: Mapped[str] = mapped_column(Text, nullable=True)
