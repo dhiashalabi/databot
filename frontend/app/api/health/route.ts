@@ -1,10 +1,25 @@
 import { NextResponse } from "next/server"
+import type { Session } from "next-auth"
+import { getServerSession } from "next-auth/next"
+
+import { authOptions } from "@/lib/auth"
 
 const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8000"
 
 export async function GET() {
   try {
-    const response = await fetch(`${BACKEND_URL}/api/health`)
+    const session = (await getServerSession(authOptions)) as Session | null
+
+    if (!session?.accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const response = await fetch(`${BACKEND_URL}/api/health`, {
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.accessToken}`,
+      },
+    })
 
     if (!response.ok) {
       throw new Error(`Backend health check failed: ${response.statusText}`)
