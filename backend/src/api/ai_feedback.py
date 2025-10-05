@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta
 from typing import Any
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, select
@@ -41,17 +41,31 @@ async def submit_feedback(
 		chat = result.scalar_one_or_none()
 
 		if not chat:
-			raise HTTPException(status_code=404, detail="Chat history not found")
+			chat_history_id = uuid4()
 
-		if chat.user_id != current_user.id:
-			raise HTTPException(
-				status_code=403,
-				detail="Cannot provide feedback for another user's chat",
+			chat = ChatHistory(
+				id=chat_history_id,
+				user_id=current_user.id,
+				user_query="Feedback submission without chat context",
+				model_used="unknown",
+				ai_response="N/A",
+				total_tokens=0,
+				success=True,
 			)
+			db.add(chat)
+			await db.commit()
+			await db.refresh(chat)
+		else:
+			if chat.user_id != current_user.id:
+				raise HTTPException(
+					status_code=403,
+					detail="Cannot provide feedback for another user's chat",
+				)
+			chat_history_id = feedback.chat_history_id
 
 		ai_feedback = await feedback_service.submit_feedback(
 			user_id=current_user.id,
-			chat_history_id=feedback.chat_history_id,
+			chat_history_id=chat_history_id,
 			feedback_type=feedback.feedback_type,
 			rating=feedback.rating,
 			is_liked=feedback.is_liked,
