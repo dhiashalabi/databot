@@ -5,10 +5,12 @@ import { useEffect, useRef } from "react"
 import { ChatHeader } from "./chat-header"
 import { ChatInput } from "./chat-input"
 import { EmptyState } from "./empty-state"
+import { FeedbackDialog } from "./feedback-dialog"
 import { MessagesContainer } from "./messages-container"
 
+import { useFeedback } from "@/hooks/use-feedback"
 import { useUIStore } from "@/lib/stores"
-import type { Message } from "@/types"
+import type { Message, MessageFeedback } from "@/types"
 
 interface ChatContainerProps {
   messages: Message[]
@@ -17,6 +19,7 @@ interface ChatContainerProps {
   onClearMessages: () => void
   selectedModel: string
   onModelChange: (modelId: string) => void
+  onUpdateMessage?: (messageId: string, updates: Partial<Message>) => void
 }
 
 export function ChatContainer({
@@ -26,9 +29,23 @@ export function ChatContainer({
   onClearMessages,
   selectedModel,
   onModelChange,
+  onUpdateMessage,
 }: ChatContainerProps) {
   const { input, setInput, clearInput, copiedId, setCopiedId } = useUIStore()
   const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  const {
+    feedbackDialogOpen,
+    currentFeedback,
+    handleFeedbackClick,
+    handleFeedbackSubmit,
+    handleDialogClose,
+    isSubmitting,
+  } = useFeedback({
+    onFeedbackSubmitted: (messageId: string, feedback: MessageFeedback) => {
+      onUpdateMessage?.(messageId, { feedback })
+    },
+  })
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -91,6 +108,7 @@ export function ChatContainer({
               isLoading={isLoading}
               copiedId={copiedId}
               onCopy={copyToClipboard}
+              onFeedback={handleFeedbackClick}
             />
           </div>
 
@@ -103,6 +121,14 @@ export function ChatContainer({
           />
         </>
       )}
+
+      <FeedbackDialog
+        open={feedbackDialogOpen}
+        onOpenChange={handleDialogClose}
+        rating={currentFeedback?.rating || "positive"}
+        onSubmit={handleFeedbackSubmit}
+        isSubmitting={isSubmitting}
+      />
     </div>
   )
 }

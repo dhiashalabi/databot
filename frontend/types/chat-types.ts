@@ -17,10 +17,26 @@ export interface Message {
     record_count?: number
     sheets?: string[]
   }>
+  feedback?: MessageFeedback
+}
+
+export interface MessageFeedback {
+  id: string
+  rating: "positive" | "negative"
+  comment?: string
+  created_at: Date
 }
 
 export interface ChatState {
   messages: Message[]
   isLoading: boolean
   error: string | null
+}
+
+export interface FeedbackRequest {
+  chat_history_id?: string
+  rating: 1 | 2 | 3 | 4 | 5
+  feedback_text?: string
+  category?: string
+  is_helpful?: boolean
 }

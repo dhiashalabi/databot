@@ -2,11 +2,13 @@
 
 import { Check, Copy } from "lucide-react"
 
+import { FeedbackButtons } from "./feedback-buttons"
 import { MessageAvatar } from "./message-avatar"
 import { MessageContent } from "./message-content"
 
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { EnhancedError } from "@/types"
+import type { EnhancedError, MessageFeedback } from "@/types"
 
 interface ChatMessageProps {
   id: string
@@ -27,6 +29,8 @@ interface ChatMessageProps {
     record_count?: number
     sheets?: string[]
   }>
+  feedback?: MessageFeedback
+  onFeedback?: (messageId: string, rating: "positive" | "negative") => void
 }
 
 export function ChatMessage({
@@ -40,6 +44,8 @@ export function ChatMessage({
   timestamp,
   isTyping,
   files,
+  feedback,
+  onFeedback,
 }: ChatMessageProps) {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString("en-US", {
@@ -65,14 +71,23 @@ export function ChatMessage({
             {formatTime(timestamp)}
           </div>
           {!isUser && !isTyping && (
-            <div className="mt-2">
-              <button
+            <div className="mt-2 flex items-center gap-2">
+              <Button
                 onClick={() => onCopy(content, id)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-transparent text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+                variant="outline"
+                size="icon"
+                className="h-7 w-7"
                 title="Copy"
               >
                 {copiedId === id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              </button>
+              </Button>
+              {onFeedback && (
+                <FeedbackButtons
+                  messageId={id}
+                  currentFeedback={feedback}
+                  onFeedback={onFeedback}
+                />
+              )}
             </div>
           )}
         </div>
