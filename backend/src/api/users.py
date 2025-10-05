@@ -82,18 +82,18 @@ async def get_my_accessible_tools(
 async def assign_role_to_user(
 	user_id: UUID,
 	role_name: str,
-	# current_user: User = Depends(get_current_user),
+	current_user: User = Depends(get_current_user),
 	db: AsyncSession = Depends(get_db),
 ) -> dict[str, Any]:
 	"""Assign a role to a user (admin only)."""
 	try:
 		permission_service = PermissionService(db)
 
-		# if not await permission_service.is_admin(current_user.id):
-		# 	raise HTTPException(
-		# 		status_code=status.HTTP_403_FORBIDDEN,
-		# 		detail="Only administrators can assign roles",
-		# 	)
+		if not await permission_service.is_admin(current_user.id):
+			raise HTTPException(
+				status_code=status.HTTP_403_FORBIDDEN,
+				detail="Only administrators can assign roles",
+			)
 
 		success = await permission_service.assign_role_to_user(user_id, role_name)
 
