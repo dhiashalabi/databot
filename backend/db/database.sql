@@ -17,6 +17,41 @@ CREATE TABLE "user" (
     updated_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE roles (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50) UNIQUE NOT NULL,
+    description TEXT,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE permissions (
+    id SERIAL PRIMARY KEY,
+    code VARCHAR(100) UNIQUE NOT NULL, -- e.g. "ai.use", "mcp.sales.view", "mcp.product.edit"
+    description TEXT,
+    category VARCHAR(50), -- optional: "AI", "MCP", "System"
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE role_permissions (
+    role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+    permission_id INTEGER REFERENCES permissions(id) ON DELETE CASCADE,
+    PRIMARY KEY (role_id, permission_id)
+);
+
+CREATE TABLE user_roles (
+    user_id UUID REFERENCES "user"(id) ON DELETE CASCADE,
+    role_id INTEGER REFERENCES roles(id) ON DELETE CASCADE,
+    PRIMARY KEY (user_id, role_id)
+);
+
+CREATE TABLE tool_permissions (
+    id SERIAL PRIMARY KEY,
+    tool_name VARCHAR(100) NOT NULL, -- e.g. "sales_tool", "charts_tool"
+    permission_code VARCHAR(100) REFERENCES permissions(code),
+    is_enabled BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE customer (
     id SERIAL PRIMARY KEY,
     customer_name VARCHAR(255) NOT NULL,
@@ -456,3 +491,77 @@ LEFT JOIN category c ON p.category_id = c.id
 LEFT JOIN sale s ON p.id = s.product_id
 GROUP BY p.id, p.product_name, c.category_name, p.stock_quantity
 ORDER BY total_revenue DESC NULLS LAST;
+
+INSERT INTO roles (name, description) VALUES
+('admin', 'Full system administrator with all permissions'),
+('analyst', 'Data analyst with read access to data and AI tools'),
+('viewer', 'Read-only access to reports and basic data'),
+('developer', 'Developer with MCP tool management capabilities'),
+('manager', 'Manager with full data access and limited admin functions');
+
+INSERT INTO permissions (code, description, category) VALUES
+('ai.use', 'Use AI models for chat and analysis', 'AI'),
+('ai.model.gpt-4o.use', 'Use GPT-4o model specifically', 'AI'),
+('ai.model.gpt-4o-mini.use', 'Use GPT-4o-mini model specifically', 'AI'),
+('ai.model.gpt-3.5-turbo.use', 'Use GPT-3.5-turbo model specifically', 'AI'),
+('ai.tokens.view', 'View token usage statistics', 'AI'),
+('ai.tokens.manage', 'Manage token limits and usage', 'AI'),
+
+('mcp.sales.view', 'View sales data through MCP tools', 'MCP'),
+('mcp.sales.edit', 'Edit sales data through MCP tools', 'MCP'),
+('mcp.customers.view', 'View customer data through MCP tools', 'MCP'),
+('mcp.customers.edit', 'Edit customer data through MCP tools', 'MCP'),
+('mcp.products.view', 'View product data through MCP tools', 'MCP'),
+('mcp.products.edit', 'Edit product data through MCP tools', 'MCP'),
+('mcp.invoices.view', 'View invoice data through MCP tools', 'MCP'),
+('mcp.invoices.edit', 'Edit invoice data through MCP tools', 'MCP'),
+('mcp.analytics.view', 'View analytics and reports through MCP tools', 'MCP'),
+('mcp.charts.create', 'Create charts and visualizations', 'MCP'),
+('mcp.tools.manage', 'Manage MCP tool registration and configuration', 'MCP'),
+
+('system.users.view', 'View user information', 'System'),
+('system.users.manage', 'Manage user accounts and permissions', 'System'),
+('system.health.view', 'View system health and status', 'System'),
+('system.logs.view', 'View system logs', 'System');
+
+INSERT INTO role_permissions (role_id, permission_id) VALUES
+(1, 1), (1, 2), (1, 3), (1, 4), (1, 5), (1, 6),
+(1, 7), (1, 8), (1, 9), (1, 10), (1, 11), (1, 12), (1, 13), (1, 14), (1, 15), (1, 16), (1, 17), -- MCP permissions
+(1, 18), (1, 19), (1, 20), (1, 21),
+
+(2, 1), (2, 2), (2, 3), (2, 4), (2, 5),
+(2, 7), (2, 9), (2, 11), (2, 13), (2, 15), (2, 16),
+(2, 20), 
+
+(3, 1), (3, 4), (3, 5),
+(3, 7), (3, 9), (3, 11), (3, 13), (3, 15),
+(3, 20),
+
+(4, 1), (4, 2), (4, 3), (4, 4),
+(4, 7), (4, 9), (4, 11), (4, 13), (4, 15), (4, 17),
+(4, 18), (4, 20),
+
+(5, 1), (5, 2), (5, 3), (5, 4), (5, 5), (5, 6),
+(5, 7), (5, 8), (5, 9), (5, 10), (5, 11), (5, 12), (5, 13), (5, 14), (5, 15), (5, 16),
+(5, 18), (5, 20), (5, 21);
+
+INSERT INTO tool_permissions (tool_name, permission_code) VALUES
+('sales_analysis', 'mcp.sales.view'),
+('sales_report', 'mcp.sales.view'),
+('sales_create', 'mcp.sales.edit'),
+('sales_update', 'mcp.sales.edit'),
+('customer_list', 'mcp.customers.view'),
+('customer_details', 'mcp.customers.view'),
+('customer_create', 'mcp.customers.edit'),
+('customer_update', 'mcp.customers.edit'),
+('product_list', 'mcp.products.view'),
+('product_details', 'mcp.products.view'),
+('product_create', 'mcp.products.edit'),
+('product_update', 'mcp.products.edit'),
+('invoice_list', 'mcp.invoices.view'),
+('invoice_details', 'mcp.invoices.view'),
+('invoice_create', 'mcp.invoices.edit'),
+('invoice_update', 'mcp.invoices.edit'),
+('analytics_dashboard', 'mcp.analytics.view'),
+('create_chart', 'mcp.charts.create'),
+('export_data', 'mcp.analytics.view');
