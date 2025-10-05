@@ -5,7 +5,9 @@ from datetime import datetime, timedelta
 import bcrypt
 from jose import JWTError, jwt
 
-SECRET_KEY = "your-secret-key-here"
+from src.env import env
+
+SECRET_KEY = env.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

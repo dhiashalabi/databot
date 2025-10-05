@@ -45,6 +45,8 @@ class EnvConfig:
 	)
 	MCP_AI_MODEL_TIMEOUT: int = int(os.getenv("MCP_AI_MODEL_TIMEOUT", "30"))
 
+	SECRET_KEY: str = os.getenv("SECRET_KEY", "secret-key")
+
 	@classmethod
 	def get_database_url(cls) -> str:
 		"""Generate database URL for async connections."""
@@ -91,6 +93,7 @@ class EnvConfig:
 			"MCP_REQUEST_TIMEOUT": cls.MCP_REQUEST_TIMEOUT,
 			"MCP_ENABLE_AI_INSIGHTS": cls.MCP_ENABLE_AI_INSIGHTS,
 			"MCP_AI_MODEL_TIMEOUT": cls.MCP_AI_MODEL_TIMEOUT,
+			"SECRET_KEY": cls.SECRET_KEY,
 		}
 
 	@classmethod
