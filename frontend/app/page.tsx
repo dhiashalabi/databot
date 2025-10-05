@@ -1,20 +1,31 @@
 "use client"
 
-import { ChatContainer } from "@/components/chat"
-import { useChat } from "@/hooks/use-chat"
+import { Loader2 } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
+import { useEffect } from "react"
 
-export default function ChatPage() {
-  const { messages, isLoading, sendMessage, clearMessages, selectedModel, onModelChange } =
-    useChat()
+export default function HomePage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
 
-  return (
-    <ChatContainer
-      messages={messages}
-      isLoading={isLoading}
-      onSendMessage={sendMessage}
-      onClearMessages={clearMessages}
-      selectedModel={selectedModel}
-      onModelChange={onModelChange}
-    />
-  )
+  useEffect(() => {
+    if (status === "loading") return
+
+    if (session) {
+      router.push("/chat")
+    } else {
+      router.push("/login")
+    }
+  }, [session, status, router])
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
+  }
+
+  return null
 }
