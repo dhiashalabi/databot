@@ -193,6 +193,15 @@ function formatValidationUserMessage(
  */
 function formatBackendUserMessage(error: AppError & { code?: string }): string {
   const code = error.code || "UNKNOWN_ERROR"
+  const message = error.message || ""
+
+  if (message.includes("permission") && message.includes("AI chat")) {
+    return "You don't have permission to use the AI chat feature. Please contact your administrator to request access."
+  }
+
+  if (message.includes("permission") && message.includes("model")) {
+    return "You don't have permission to use this AI model. Please contact your administrator or try a different model."
+  }
 
   switch (code) {
     case "AUTH_ERROR":
@@ -205,6 +214,12 @@ function formatBackendUserMessage(error: AppError & { code?: string }): string {
       return "There's a temporary issue with the database. Please try again in a few moments."
     case "TIMEOUT":
       return "The request took too long to process. Please try again with a simpler question."
+    case "BACKEND_ERROR":
+      // Check if it's a permission error
+      if (message.includes("permission")) {
+        return "You don't have the required permissions. Please contact your administrator."
+      }
+      return "Something went wrong on our end. Please try again."
     default:
       return "Something went wrong on our end. Please try again."
   }
@@ -251,6 +266,14 @@ function formatStringError(error: string): string {
 
   if (error.includes("invalid_api_key") || error.includes("Incorrect API key")) {
     return "Invalid API key. Please check your backend configuration."
+  }
+
+  if (error.includes("permission") && error.includes("AI chat")) {
+    return "You don't have permission to use the AI chat feature. Please contact your administrator to request access."
+  }
+
+  if (error.includes("permission") && error.includes("model")) {
+    return "You don't have permission to use this AI model. Please contact your administrator or try a different model."
   }
 
   if (error.includes("ECONNREFUSED") || error.includes("Cannot connect")) {
@@ -318,6 +341,11 @@ function getBackendSuggestions(code?: string): string[] {
       return ["Try breaking your question into smaller parts", "Ask a more specific question"]
     case "DATABASE_ERROR":
       return ["Try again in a few moments", "Contact support if the issue persists"]
+    case "BACKEND_ERROR":
+      return [
+        "Contact your administrator to request AI chat permissions",
+        "Check if you have the correct user role assigned",
+      ]
     default:
       return ["Please try again", "Contact support if the issue persists"]
   }
