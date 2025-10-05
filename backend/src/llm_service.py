@@ -4,7 +4,6 @@ from datetime import datetime
 import json
 import logging
 import time
-import traceback
 from typing import Any
 from uuid import UUID
 
@@ -117,40 +116,11 @@ class LLMService:
 						request_type="chat",
 						user_query=user_query,
 						response_summary=response.choices[0].message.content[:500]
-						if response.choices
+						if response.choices and len(response.choices) > 0 and response.choices[0].message.content
 						else None,
 						response_time_ms=response_time_ms,
 						success=True,
 					)
-
-					if user_query:
-						try:
-							ai_response = (
-								response.choices[0].message.content
-								if response.choices
-								else None
-							)
-							chat_history = await self.token_service.create_chat_history(
-								user_id=user_id,
-								user_query=user_query,
-								model_used=selected_model,
-								ai_response=ai_response,
-								response_time_ms=response_time_ms,
-								input_tokens=usage.prompt_tokens,
-								output_tokens=usage.completion_tokens,
-								request_type="chat",
-								success=True,
-							)
-							self.logger.info(
-								f"Successfully created chat history with ID: {chat_history.id}"
-							)
-						except Exception as e:
-							self.logger.error(
-								f"Failed to create chat history in create_chat_completion: {e}"
-							)
-							self.logger.error(
-								f"Chat history creation traceback: {traceback.format_exc()}"
-							)
 
 			return response
 
@@ -170,27 +140,6 @@ class LLMService:
 					error_message=str(e),
 				)
 
-				if user_query:
-					try:
-						chat_history = await self.token_service.create_chat_history(
-							user_id=user_id,
-							user_query=user_query,
-							model_used=selected_model,
-							ai_response=None,
-							response_time_ms=response_time_ms,
-							input_tokens=0,
-							output_tokens=0,
-							request_type="chat",
-							success=False,
-							error_message=str(e),
-						)
-						self.logger.info(
-							f"Created chat history for failed request with ID: {chat_history.id}"
-						)
-					except Exception as chat_error:
-						self.logger.error(
-							f"Failed to create chat history for failed request: {chat_error}"
-						)
 			raise
 
 	async def process_with_tools(
@@ -256,8 +205,6 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 			{"role": "user", "content": user_query},
 		]
 
-		start_time = time.time()
-		selected_model = model or settings.OPENAI_MODEL
 		total_input_tokens = 0
 		total_output_tokens = 0
 
@@ -286,6 +233,16 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				"error": "OpenAI API unavailable",
 			}
 
+		if not response.choices or len(response.choices) == 0:
+			logger = logging.getLogger(__name__)
+			logger.error("No choices returned from OpenAI API")
+			return {
+				"answer": "I'm experiencing technical difficulties. Please try again in a moment.",
+				"data": None,
+				"query": user_query,
+				"error": "No response choices available",
+			}
+
 		message = response.choices[0].message
 		tool_calls = message.tool_calls
 
@@ -297,7 +254,21 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				"query": user_query,
 			}
 
-		messages.append(message)
+		messages.append({
+			"role": message.role,
+			"content": message.content,
+			"tool_calls": [
+				{
+					"id": tool_call.id,
+					"type": tool_call.type,
+					"function": {
+						"name": tool_call.function.name,
+						"arguments": tool_call.function.arguments,
+					},
+				}
+				for tool_call in message.tool_calls
+			] if message.tool_calls else None,
+		})
 		tool_results = []
 
 		for tool_call in tool_calls:
@@ -350,41 +321,17 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 
 		files = self._extract_file_info(tool_results)
 
+		if not final_response.choices or len(final_response.choices) == 0:
+			logger = logging.getLogger(__name__)
+			logger.error("No choices returned from final OpenAI API response")
+			return {
+				"answer": "I've gathered the data you requested, but I'm having trouble generating a complete analysis. Here's what I found:",
+				"data": tool_results[0] if len(tool_results) == 1 else tool_results,
+				"query": user_query,
+				"error": "No final response choices available",
+			}
+
 		ai_response = final_response.choices[0].message.content
-		response_time_ms = int((time.time() - start_time) * 1000)
-
-		if self.token_service and user_id:
-			try:
-				tools_used = (
-					[tool_info["name"] for tool_info in mcp_tools]
-					if mcp_tools
-					else None
-				)
-				chat_history = await self.token_service.create_chat_history(
-					user_id=user_id,
-					user_query=user_query,
-					model_used=selected_model,
-					ai_response=ai_response,
-					response_time_ms=response_time_ms,
-					input_tokens=total_input_tokens,
-					output_tokens=total_output_tokens,
-					request_type="mcp_tools",
-					tools_used=json.dumps(tools_used) if tools_used else None,
-					success=True,
-					session_id=session_id,
-					conversation_context=json.dumps(
-						{"tool_results_count": len(tool_results)}
-					),
-				)
-				self.logger.info(
-					f"Successfully created chat history with ID: {chat_history.id}"
-				)
-			except Exception as e:
-				self.logger.error(f"Failed to create chat history: {e}")
-
-				self.logger.error(
-					f"Chat history creation traceback: {traceback.format_exc()}"
-				)
 
 		response = {
 			"answer": ai_response,
@@ -396,37 +343,6 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 			response["files"] = files
 
 		return response
-
-	async def simple_chat_completion(
-		self,
-		user_query: str,
-		system_message: str | None = None,
-		model: str | None = None,
-	) -> str:
-		"""Create a simple chat completion without tools.
-
-		Args:
-			user_query: The user's query
-			system_message: system message
-			model: OpenAI model to use (defaults to settings.OPENAI_MODEL)
-
-		Returns:
-			The assistant's response content
-
-		"""
-		messages = []
-
-		if system_message:
-			messages.append({"role": "system", "content": system_message})
-
-		messages.append({"role": "user", "content": user_query})
-
-		response = await self.create_chat_completion(
-			messages=messages,
-			model=model,
-		)
-
-		return response.choices[0].message.content or "I couldn't process your query."
 
 	def _extract_file_info(
 		self, tool_results: list[dict[str, Any]]
