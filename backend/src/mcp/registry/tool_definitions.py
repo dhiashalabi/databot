@@ -922,6 +922,84 @@ class ToolDefinitions:
 					"required": ["query_type"],
 				},
 			),
+			Tool(
+				name="export_customers_to_pdf",
+				description="Export customer data to PDF format with sales summary and analytics",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"customer_type": {
+							"type": "string",
+							"description": "Filter by customer type (individual, corporate, etc.)",
+						},
+						"limit": {
+							"type": "integer",
+							"description": "Maximum number of customers to include in report",
+						},
+						"report_title": {
+							"type": "string",
+							"default": "Customer Report",
+							"description": "Title for the PDF report",
+						},
+						"include_sales_summary": {
+							"type": "boolean",
+							"default": True,
+							"description": "Include sales summary and analytics for each customer",
+						},
+					},
+				},
+			),
+			Tool(
+				name="export_top_customers_to_pdf",
+				description="Export top customers to PDF format ranked by revenue or order count",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"limit": {
+							"type": "integer",
+							"default": 10,
+							"description": "Number of top customers to include (e.g., top 5, top 10)",
+						},
+						"metric": {
+							"type": "string",
+							"enum": ["revenue", "orders"],
+							"default": "revenue",
+							"description": "Ranking metric - by total revenue or number of orders",
+						},
+						"report_title": {
+							"type": "string",
+							"description": "Custom title for the PDF report (auto-generated if not provided)",
+						},
+					},
+				},
+			),
+			Tool(
+				name="export_products_to_pdf",
+				description="Export product data to PDF format with inventory and sales analytics",
+				inputSchema={
+					"type": "object",
+					"properties": {
+						"category": {
+							"type": "string",
+							"description": "Filter by product category",
+						},
+						"limit": {
+							"type": "integer",
+							"description": "Maximum number of products to include in report",
+						},
+						"report_title": {
+							"type": "string",
+							"default": "Products Report",
+							"description": "Title for the PDF report",
+						},
+						"include_sales_data": {
+							"type": "boolean",
+							"default": True,
+							"description": "Include sales performance data and analytics",
+						},
+					},
+				},
+			),
 		]
 
 	@classmethod
@@ -1221,6 +1299,21 @@ class ToolDefinitions:
 				"group": "files",
 				"category": "export",
 				"namespace": "files.custom_excel",
+			},
+			"export_customers_to_pdf": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.customers_pdf",
+			},
+			"export_top_customers_to_pdf": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.top_customers_pdf",
+			},
+			"export_products_to_pdf": {
+				"group": "files",
+				"category": "export",
+				"namespace": "files.products_pdf",
 			},
 		}
 
