@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, Float, String
+from sqlalchemy import Boolean, DateTime, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database import Base
@@ -22,7 +22,7 @@ class Customer(Base):
 	city: Mapped[str | None] = mapped_column(String(100), nullable=True)
 	country: Mapped[str | None] = mapped_column(String(100), nullable=True)
 	customer_type: Mapped[str] = mapped_column(String(50), default="retail")
-	credit_limit: Mapped[float] = mapped_column(Float, default=0)
+	credit_limit: Mapped[float] = mapped_column(Numeric(10, 2), default=0)
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 	created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 	updated_at: Mapped[datetime] = mapped_column(
