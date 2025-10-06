@@ -1,6 +1,7 @@
 """Token management service for AI request tracking and limits."""
 
 from datetime import datetime, timedelta
+from decimal import Decimal
 import logging
 from typing import Any
 from uuid import UUID
@@ -230,11 +231,11 @@ class TokenManagementService:
 			if model_limits:
 				if model_limits.input_cost_per_1k_tokens:
 					input_cost = (
-						input_tokens / 1000
+						Decimal(str(input_tokens)) / Decimal("1000")
 					) * model_limits.input_cost_per_1k_tokens
 				if model_limits.output_cost_per_1k_tokens:
 					output_cost = (
-						output_tokens / 1000
+						Decimal(str(output_tokens)) / Decimal("1000")
 					) * model_limits.output_cost_per_1k_tokens
 				if input_cost is not None and output_cost is not None:
 					total_cost = input_cost + output_cost
