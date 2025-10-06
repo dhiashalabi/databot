@@ -31,6 +31,14 @@ class AIPermissionMiddleware:
 		Returns:
 			True if user has permission, False otherwise
 		"""
+		if not user_id:
+			logger.error("User ID is required for permission check")
+			return False
+
+		if not model_name:
+			logger.error("Model name is required for permission check")
+			return False
+
 		try:
 			await self.permission_checker.validate_ai_model_call(
 				user_id=user_id, model_name=model_name, messages=messages

@@ -178,6 +178,9 @@ class MCPServer:
 			await init_db()
 
 			session_maker = await get_session_maker()
+			if not session_maker:
+				raise DatabaseError("Failed to get session maker")
+
 			self.db_session = session_maker()
 
 			self.data_tools = MCPTools(self.db_session)
@@ -298,15 +301,18 @@ class MCPServer:
 		"""Clean up database session and resources."""
 		try:
 			if self.db_session:
-				await self.db_session.close()
-				self.db_session = None
+				try:
+					await self.db_session.close()
+				except Exception as e:
+					logger.warning(f"Error closing db session: {e}")
+				finally:
+					self.db_session = None
 
 			if self.tool_cache:
-				await self.tool_cache.invalidate_all()
-
-			from src.database import close_db
-
-			await close_db()
+				try:
+					await self.tool_cache.invalidate_all()
+				except Exception as e:
+					logger.warning(f"Error invalidating cache: {e}")
 
 			self.data_tools = None
 			self.insights_engine = None

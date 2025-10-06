@@ -189,6 +189,7 @@ class TokenManagementService:
 					"allowed": False,
 					"reason": f"Token limit exceeded for: {', '.join(exceeded_periods)}",
 					"limits": limits_info,
+					"exceeded_periods": exceeded_periods,
 				}
 
 			return {
@@ -238,21 +239,23 @@ class TokenManagementService:
 				if input_cost is not None and output_cost is not None:
 					total_cost = input_cost + output_cost
 
+			total_tokens_calculated = max(0, input_tokens) + max(0, output_tokens)
+
 			usage_record = TokenUsage(
 				user_id=user_id,
 				model_name=model_name,
-				input_tokens=input_tokens,
-				output_tokens=output_tokens,
-				total_tokens=input_tokens + output_tokens,
+				input_tokens=max(0, input_tokens),
+				output_tokens=max(0, output_tokens),
+				total_tokens=total_tokens_calculated,
 				input_cost=input_cost,
 				output_cost=output_cost,
 				total_cost=total_cost,
 				request_type=request_type,
-				user_query=user_query,
-				response_summary=response_summary,
+				user_query=user_query[:2000] if user_query else None,
+				response_summary=response_summary[:500] if response_summary else None,
 				response_time_ms=response_time_ms,
 				success=success,
-				error_message=error_message,
+				error_message=error_message[:1000] if error_message else None,
 			)
 
 			self.db.add(usage_record)
@@ -260,7 +263,7 @@ class TokenManagementService:
 			await self.db.refresh(usage_record)
 
 			self.logger.info(
-				f"Recorded token usage: {input_tokens + output_tokens} tokens for user {user_id}"
+				f"Recorded token usage: {total_tokens_calculated} tokens for user {user_id}"
 			)
 			return usage_record
 

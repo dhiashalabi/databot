@@ -35,7 +35,19 @@ class PermissionService:
 		Returns:
 			True if user has the permission, False otherwise
 		"""
+		if not user_id:
+			logger.error("User ID is required for permission check")
+			return False
+
+		if not permission_code:
+			logger.error("Permission code is required for permission check")
+			return False
+
 		try:
+			if not self.db:
+				logger.error("Database session is not available")
+				return False
+
 			query = (
 				select(Permission.id)
 				.select_from(

@@ -28,7 +28,12 @@ class MCPClient:
 	async def connect(self):
 		"""Connect to the MCP server."""
 		if self._connected and self.session:
-			return
+			try:
+				await self.session.list_tools()
+				return
+			except Exception:
+				self._connected = False
+				self.session = None
 
 		await self._connect_to_mcp_server()
 

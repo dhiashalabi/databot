@@ -25,6 +25,9 @@ class LLMService:
 		db_session: AsyncSession | None = None,
 	):
 		"""Initialize the LLM service with OpenAI client."""
+		if not settings.OPENAI_API_KEY:
+			raise ValueError("OPENAI_API_KEY is required")
+
 		self.client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
 		self.permission_middleware = ai_permission_middleware
 		self.db_session = db_session
@@ -84,11 +87,11 @@ class LLMService:
 			)
 
 			if not limits_check["allowed"]:
+				exceeded_periods = limits_check.get("exceeded_periods", [])
+				limit_type = exceeded_periods[0] if exceeded_periods else "unknown"
 				raise TokenLimitExceeded(
 					message=limits_check["reason"],
-					limit_type=limits_check.get("exceeded_periods", ["unknown"])[0]
-					if limits_check.get("exceeded_periods")
-					else "unknown",
+					limit_type=limit_type,
 				)
 
 		kwargs = {
@@ -115,9 +118,14 @@ class LLMService:
 						output_tokens=usage.completion_tokens,
 						request_type="chat",
 						user_query=user_query,
-						response_summary=response.choices[0].message.content[:500]
-						if response.choices and len(response.choices) > 0 and response.choices[0].message.content
-						else None,
+						response_summary=(
+							response.choices[0].message.content[:500]
+							if response.choices
+							and len(response.choices) > 0
+							and response.choices[0].message
+							and response.choices[0].message.content
+							else None
+						),
 						response_time_ms=response_time_ms,
 						success=True,
 					)
@@ -233,7 +241,7 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				"error": "OpenAI API unavailable",
 			}
 
-		if not response.choices or len(response.choices) == 0:
+		if not response or not response.choices or len(response.choices) == 0:
 			logger = logging.getLogger(__name__)
 			logger.error("No choices returned from OpenAI API")
 			return {
@@ -254,10 +262,9 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				"query": user_query,
 			}
 
-		messages.append({
-			"role": message.role,
-			"content": message.content,
-			"tool_calls": [
+		tool_calls_data = None
+		if message.tool_calls:
+			tool_calls_data = [
 				{
 					"id": tool_call.id,
 					"type": tool_call.type,
@@ -267,8 +274,16 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 					},
 				}
 				for tool_call in message.tool_calls
-			] if message.tool_calls else None,
-		})
+			]
+
+		message_data = {
+			"role": message.role,
+			"content": message.content,
+		}
+		if tool_calls_data:
+			message_data["tool_calls"] = tool_calls_data
+
+		messages.append(message_data)
 		tool_results = []
 
 		for tool_call in tool_calls:
@@ -321,7 +336,11 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 
 		files = self._extract_file_info(tool_results)
 
-		if not final_response.choices or len(final_response.choices) == 0:
+		if (
+			not final_response
+			or not final_response.choices
+			or len(final_response.choices) == 0
+		):
 			logger = logging.getLogger(__name__)
 			logger.error("No choices returned from final OpenAI API response")
 			return {
@@ -331,7 +350,14 @@ Table format: | Metric | Value | Change % | with right-aligned numbers."""
 				"error": "No final response choices available",
 			}
 
-		ai_response = final_response.choices[0].message.content
+		ai_response = (
+			final_response.choices[0].message.content
+			if final_response.choices
+			and len(final_response.choices) > 0
+			and final_response.choices[0].message
+			and final_response.choices[0].message.content
+			else "I was unable to generate a complete response. Please try again."
+		)
 
 		response = {
 			"answer": ai_response,
