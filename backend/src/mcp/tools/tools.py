@@ -340,3 +340,36 @@ class MCPTools(BaseTools):
 		return await self.files.export_custom_query_to_excel(
 			query_type, filters, export_format
 		)
+
+	async def export_customers_to_pdf(
+		self,
+		customer_type: str | None = None,
+		limit: int | None = None,
+		report_title: str = "Customer Report",
+		include_sales_summary: bool = True,
+	) -> dict[str, Any]:
+		"""Export customers data to PDF format."""
+		return await self.files.export_customers_to_pdf(
+			customer_type, limit, report_title, include_sales_summary
+		)
+
+	async def export_top_customers_to_pdf(
+		self,
+		limit: int = 10,
+		metric: str = "revenue",
+		report_title: str | None = None,
+	) -> dict[str, Any]:
+		"""Export top customers to PDF format based on revenue or order count."""
+		return await self.files.export_top_customers_to_pdf(limit, metric, report_title)
+
+	async def export_products_to_pdf(
+		self,
+		category: str | None = None,
+		limit: int | None = None,
+		report_title: str = "Products Report",
+		include_sales_data: bool = True,
+	) -> dict[str, Any]:
+		"""Export products data to PDF format."""
+		return await self.files.export_products_to_pdf(
+			category, limit, report_title, include_sales_data
+		)
