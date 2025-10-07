@@ -1,6 +1,7 @@
 """Schemas for token management and AI feedback."""
 
 from datetime import datetime
+from decimal import Decimal
 from enum import Enum
 from typing import Any
 from uuid import UUID
@@ -25,9 +26,9 @@ class TokenUsageResponse(BaseModel):
 	input_tokens: int
 	output_tokens: int
 	total_tokens: int
-	input_cost: float | None = None
-	output_cost: float | None = None
-	total_cost: float | None = None
+	input_cost: Decimal | None = None
+	output_cost: Decimal | None = None
+	total_cost: Decimal | None = None
 	request_type: str
 	response_time_ms: int | None = None
 	success: bool
@@ -66,7 +67,7 @@ class UsageSummaryResponse(BaseModel):
 	total_tokens: int
 	total_input_tokens: int
 	total_output_tokens: int
-	total_cost: float
+	total_cost: Decimal
 	avg_response_time: float
 	successful_requests: int
 	success_rate: float
@@ -155,8 +156,8 @@ class ModelTokenLimitCreate(BaseModel):
 	daily_token_limit: int | None = None
 	weekly_token_limit: int | None = None
 	monthly_token_limit: int | None = None
-	input_cost_per_1k_tokens: float | None = None
-	output_cost_per_1k_tokens: float | None = None
+	input_cost_per_1k_tokens: Decimal | None = None
+	output_cost_per_1k_tokens: Decimal | None = None
 
 
 class ModelTokenLimitResponse(BaseModel):
@@ -167,8 +168,8 @@ class ModelTokenLimitResponse(BaseModel):
 	daily_token_limit: int | None = None
 	weekly_token_limit: int | None = None
 	monthly_token_limit: int | None = None
-	input_cost_per_1k_tokens: float | None = None
-	output_cost_per_1k_tokens: float | None = None
+	input_cost_per_1k_tokens: Decimal | None = None
+	output_cost_per_1k_tokens: Decimal | None = None
 	is_active: bool
 	created_at: datetime
 

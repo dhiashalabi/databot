@@ -51,6 +51,8 @@ class ChartTools(BaseTools):
 	) -> dict[str, Any]:
 		"""Create a sales trend chart showing revenue over time."""
 		try:
+			await self.db.rollback()
+
 			if period == "day":
 				title = f"Sales Revenue Trend by Day (Last {limit} Days)"
 				x_label = "Date"
@@ -143,6 +145,7 @@ class ChartTools(BaseTools):
 	) -> dict[str, Any]:
 		"""Create a sales by category chart."""
 		try:
+			await self.db.rollback()
 			query = SalesQueryBuilder.build_sales_by_category_query(start_date)
 			result_rows = await self.db.execute(query)
 			data = result_rows.fetchall()
@@ -208,6 +211,8 @@ class ChartTools(BaseTools):
 	) -> dict[str, Any]:
 		"""Create a chart showing top products by revenue or quantity."""
 		try:
+			await self.db.rollback()
+
 			if metric == "quantity":
 				metric_col = func.sum(Sale.quantity)
 				metric_label = "Quantity Sold"
@@ -295,6 +300,8 @@ class ChartTools(BaseTools):
 	) -> dict[str, Any]:
 		"""Create a customer analysis chart showing top customers by revenue or frequency."""
 		try:
+			await self.db.rollback()
+
 			if analysis_type == "frequency":
 				metric_col = func.count(Sale.id)
 				metric_label = "Number of Purchases"
@@ -394,6 +401,7 @@ class ChartTools(BaseTools):
 	) -> dict[str, Any]:
 		"""Create a chart comparing sales between two periods."""
 		try:
+			await self.db.rollback()
 			from datetime import datetime
 
 			p1_start = datetime.fromisoformat(period1_start)
@@ -530,6 +538,8 @@ class ChartTools(BaseTools):
 	) -> dict[str, Any]:
 		"""Create a chart from a custom SQL query."""
 		try:
+			await self.db.rollback()
+
 			result = await self.db.execute(text(sql_query))
 			data = result.fetchall()
 
@@ -566,7 +576,7 @@ class ChartTools(BaseTools):
 			if chart_type == "pie":
 				ax.pie(
 					df[y_column],
-					labels=df[x_column].astype(str),
+					labels=df[x_column].astype(str).tolist(),
 					autopct="%1.1f%%",
 					startangle=90,
 				)
@@ -575,7 +585,7 @@ class ChartTools(BaseTools):
 				ax.set_xlabel(x_column)
 				ax.set_ylabel(y_column)
 			else:
-				ax.bar(df[x_column].astype(str), df[y_column])
+				ax.bar(df[x_column].astype(str).tolist(), df[y_column])
 				ax.set_xlabel(x_column)
 				ax.set_ylabel(y_column)
 

@@ -13,6 +13,15 @@ class BaseTools:
 		"""Initialize with database session."""
 		self.db = db
 
+	async def _safe_execute_query(self, query):
+		"""Execute a query with transaction rollback safety."""
+		try:
+			await self.db.rollback()
+			return await self.db.execute(query)
+		except Exception as e:
+			await self.db.rollback()
+			raise e
+
 	async def _execute_query_with_count(
 		self,
 		query,
@@ -22,10 +31,10 @@ class BaseTools:
 	) -> dict[str, Any]:
 		"""Execute a query with count and format results."""
 		try:
-			result = await self.db.execute(query)
+			result = await self._safe_execute_query(query)
 			items = result.scalars().all()
 
-			count_result = await self.db.execute(count_query)
+			count_result = await self._safe_execute_query(count_query)
 			total_count = count_result.scalar()
 
 			formatted_items = [formatter_func(item) for item in items]

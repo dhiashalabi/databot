@@ -1,6 +1,7 @@
 """Token usage tracking models for AI request management."""
 
 from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
 from typing import TYPE_CHECKING
 from uuid import UUID
@@ -13,6 +14,7 @@ from sqlalchemy import (
 	ForeignKey,
 	Index,
 	Integer,
+	Numeric,
 	String,
 	Text,
 )
@@ -45,8 +47,12 @@ class ModelTokenLimit(Base):
 	weekly_token_limit: Mapped[int] = mapped_column(Integer, nullable=True)
 	monthly_token_limit: Mapped[int] = mapped_column(Integer, nullable=True)
 
-	input_cost_per_1k_tokens: Mapped[float] = mapped_column(nullable=True)
-	output_cost_per_1k_tokens: Mapped[float] = mapped_column(nullable=True)
+	input_cost_per_1k_tokens: Mapped[Decimal | None] = mapped_column(
+		Numeric(10, 6), nullable=True
+	)
+	output_cost_per_1k_tokens: Mapped[Decimal | None] = mapped_column(
+		Numeric(10, 6), nullable=True
+	)
 
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 	created_at: Mapped[datetime] = mapped_column(
@@ -84,9 +90,9 @@ class TokenUsage(Base):
 	output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 	total_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
-	input_cost: Mapped[float] = mapped_column(nullable=True)
-	output_cost: Mapped[float] = mapped_column(nullable=True)
-	total_cost: Mapped[float] = mapped_column(nullable=True)
+	input_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
+	output_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
+	total_cost: Mapped[Decimal | None] = mapped_column(Numeric(10, 6), nullable=True)
 
 	request_type: Mapped[str] = mapped_column(
 		String(50), nullable=False, default="chat"

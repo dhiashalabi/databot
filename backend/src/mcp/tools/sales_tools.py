@@ -18,6 +18,8 @@ class SalesTools(BaseTools):
 	) -> list:
 		"""Get sales data for a specific period."""
 		try:
+			await self.db.rollback()
+
 			query = SalesQueryBuilder.build_sales_by_period_query(start_date, end_date)
 			result = await self.db.execute(query)
 			sales = result.scalars().all()
@@ -69,6 +71,8 @@ class SalesTools(BaseTools):
 	async def get_sales_by_category(self, start_date: str | None = None) -> list:
 		"""Get sales grouped by category."""
 		try:
+			await self.db.rollback()
+
 			query = SalesQueryBuilder.build_sales_by_category_query(start_date)
 			result = await self.db.execute(query)
 			categories = result.fetchall()
@@ -88,6 +92,8 @@ class SalesTools(BaseTools):
 	async def get_sales_summary(self) -> dict[str, Any]:
 		"""Get overall sales summary."""
 		try:
+			await self.db.rollback()
+
 			query = select(
 				func.count(Sale.id).label("total_sales"),
 				func.sum(Sale.amount).label("total_revenue"),

@@ -1,8 +1,9 @@
 """Product and Category models."""
 
 from datetime import datetime
+from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.database import Base
@@ -35,8 +36,8 @@ class Product(Base):
 	category_id: Mapped[int | None] = mapped_column(
 		ForeignKey("category.id", ondelete="SET NULL"), nullable=True
 	)
-	unit_price: Mapped[float] = mapped_column(Float)
-	cost_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+	unit_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+	cost_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2), nullable=True)
 	stock_quantity: Mapped[int] = mapped_column(Integer, default=0)
 	reorder_level: Mapped[int] = mapped_column(Integer, default=10)
 	is_active: Mapped[bool] = mapped_column(Boolean, default=True)
