@@ -1,0 +1,3 @@
+[submodule "mcp_agent"]
+	path = mcp_agent
+	url = git@github.com:dhiashalabi/mcp-engine.git
