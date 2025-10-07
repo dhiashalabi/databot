@@ -1,0 +1,3 @@
+[submodule "mcp-engine"]
+	path = mcp-engine
+	url = https://github.com/dhiashalabi/mcp-engine.git
